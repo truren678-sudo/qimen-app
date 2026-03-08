@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+    background-color: #f0f4f8;
+    color: #1a202c;
+  }
+}
+
+@layer utilities {
+  .cell-border {
+    border: 1px solid #cbd5e0;
+  }
+}
