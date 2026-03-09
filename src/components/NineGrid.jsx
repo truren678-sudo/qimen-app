@@ -186,7 +186,7 @@ export function NineGrid({ result }) {
                 </div>
             )}
 
-            <div className="flex items-stretch w-[540px] transform origin-top-left scale-[0.6] sm:scale-[0.8] md:scale-100 transition-transform">
+            <div className="flex items-stretch w-[540px] shrink-0">
                 {/* 盤面左方 */}
                 <div className={`${isMingPan ? 'w-[40px]' : 'w-[24px]'} shrink-0 flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]`}
                     style={{ writingMode: 'vertical-rl' }}>

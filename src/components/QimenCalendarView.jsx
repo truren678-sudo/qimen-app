@@ -135,7 +135,7 @@ export function QimenCalendarView() {
         if (!dailyDataList || dailyDataList.length === 0) return null;
 
         return (
-            <div className="flex-1 bg-white ml-6 overflow-y-auto">
+            <div className="flex-1 bg-white mt-6 md:mt-0 md:ml-6 overflow-visible md:overflow-y-auto">
                 {dailyDataList.map((dailyData, dayIdx) => {
                     const dateStr = `${dailyData.date.replace(/-/g, '/')} (週${CHINESE_WEEKDAYS[new Date(dailyData.date).getDay()]})`;
 
@@ -195,9 +195,9 @@ export function QimenCalendarView() {
     };
 
     return (
-        <div className="flex h-full max-w-6xl mx-auto w-full pt-4 pb-4">
+        <div className="flex flex-col md:flex-row h-full max-w-6xl mx-auto w-full px-2 md:px-4 pt-4 pb-4 overflow-y-auto md:overflow-hidden">
             {/* 左側日曆與篩選區 */}
-            <div className="flex flex-col w-[350px] shrink-0">
+            <div className="flex flex-col w-full md:w-[350px] shrink-0">
                 {/* 迷你日曆 */}
                 <div className="bg-white border border-gray-200 rounded-sm p-4 mb-4 shadow-sm">
                     <div className="flex justify-between items-center mb-4">

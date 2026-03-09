@@ -143,10 +143,12 @@ function App() {
         {/* 盤局資訊區 */}
         <BoardInfo result={result} />
 
-        {/* 九宮格 - 自動縮放適配手機 */}
+        {/* 九宮格 - 手機板橫向滑動 */}
         {result && (
-          <div className="mt-4 flex justify-center overflow-x-auto">
-            <NineGrid result={result} />
+          <div className="mt-4 w-full overflow-x-auto custom-scrollbar">
+            <div className="min-w-max flex justify-center px-2 py-4">
+              <NineGrid result={result} />
+            </div>
           </div>
         )}
 
