@@ -1,7 +1,7 @@
 /**
  * 九宮格元件 v3 - 三欄式精準佈局
  */
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 
 // 色彩配置：符合參考圖主要黑/灰，部分紅/綠
 const DOOR_CLR = {
@@ -177,49 +177,80 @@ export function NineGrid({ result }) {
 
     const isMingPan = result.chartType === '命盤';
 
+    const containerRef = useRef(null);
+    const innerRef = useRef(null);
+    const [scale, setScale] = useState(1);
+    const [innerH, setInnerH] = useState(540);
+
+    useEffect(() => {
+        const updateScale = () => {
+            if (containerRef.current && innerRef.current) {
+                const parentWidth = containerRef.current.parentElement.offsetWidth;
+                const MARGIN = 16;
+                const availableW = parentWidth - MARGIN;
+
+                if (availableW > 0 && availableW < 540) {
+                    setScale(availableW / 540);
+                } else {
+                    setScale(1);
+                }
+                setInnerH(innerRef.current.offsetHeight);
+            }
+        };
+
+        const observer = new ResizeObserver(() => updateScale());
+        if (containerRef.current?.parentElement) observer.observe(containerRef.current.parentElement);
+        if (innerRef.current) observer.observe(innerRef.current);
+
+        updateScale();
+        return () => observer.disconnect();
+    }, [result]);
+
     return (
-        <div className="flex flex-col items-center mt-6 mb-6">
-            {/* 盤面上方 */}
-            {!isMingPan && (
-                <div className="text-[12px] text-gray-500 tracking-widest mb-1.5 flex items-center justify-center gap-2 w-full">
-                    <span>▲ 南（巳 · 離 · 午）</span>
-                </div>
-            )}
+        <div ref={containerRef} className="w-full flex justify-center overflow-hidden" style={{ height: scale < 1 ? innerH * scale : 'auto' }}>
+            <div ref={innerRef} className="flex flex-col items-center mt-6 mb-6 transform origin-top" style={{ transform: `scale(${scale})`, width: '540px' }}>
+                {/* 盤面上方 */}
+                {!isMingPan && (
+                    <div className="text-[12px] text-gray-500 tracking-widest mb-1.5 flex items-center justify-center gap-2 w-full">
+                        <span>▲ 南（巳 · 離 · 午）</span>
+                    </div>
+                )}
 
-            <div className="flex items-stretch w-[540px] shrink-0">
-                {/* 盤面左方 */}
-                <div className={`${isMingPan ? 'w-[40px]' : 'w-[24px]'} shrink-0 flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]`}
-                    style={{ writingMode: 'vertical-rl' }}>
-                    {!isMingPan && '東（卯）'}
+                <div className="flex items-stretch w-[540px] shrink-0">
+                    {/* 盤面左方 */}
+                    <div className={`${isMingPan ? 'w-[40px]' : 'w-[24px]'} shrink-0 flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]`}
+                        style={{ writingMode: 'vertical-rl' }}>
+                        {!isMingPan && '東（卯）'}
+                    </div>
+
+                    {/* 正九宮格 */}
+                    <div className="grid grid-cols-3 flex-1 border border-gray-400 shadow-sm relative overflow-hidden">
+                        {result.palaces.map(p => (
+                            <PalaceCell
+                                key={p.num}
+                                palace={p}
+                                isKong={kwPals.includes(p.num)}
+                                isMa={maPal === p.num}
+                                isDayQimen={result.isDayQimen}
+                                isMingPan={isMingPan}
+                            />
+                        ))}
+                    </div>
+
+                    {/* 盤面右方 */}
+                    <div className={`${isMingPan ? 'w-[40px]' : 'w-[24px]'} shrink-0 flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]`}
+                        style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                        {!isMingPan && '西（酉）'}
+                    </div>
                 </div>
 
-                {/* 正九宮格 */}
-                <div className="grid grid-cols-3 flex-1 border border-gray-400 shadow-sm relative overflow-hidden">
-                    {result.palaces.map(p => (
-                        <PalaceCell
-                            key={p.num}
-                            palace={p}
-                            isKong={kwPals.includes(p.num)}
-                            isMa={maPal === p.num}
-                            isDayQimen={result.isDayQimen}
-                            isMingPan={isMingPan}
-                        />
-                    ))}
-                </div>
-
-                {/* 盤面右方 */}
-                <div className={`${isMingPan ? 'w-[40px]' : 'w-[24px]'} shrink-0 flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]`}
-                    style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                    {!isMingPan && '西（酉）'}
-                </div>
+                {/* 盤面下方 */}
+                {!isMingPan && (
+                    <div className="text-[12px] text-gray-500 tracking-widest mt-1.5 flex items-center justify-center gap-2 w-full">
+                        <span>▼ 北（亥 · 坎 · 子）</span>
+                    </div>
+                )}
             </div>
-
-            {/* 盤面下方 */}
-            {!isMingPan && (
-                <div className="text-[12px] text-gray-500 tracking-widest mt-1.5 flex items-center justify-center gap-2 w-full">
-                    <span>▼ 北（亥 · 坎 · 子）</span>
-                </div>
-            )}
         </div>
     );
 }

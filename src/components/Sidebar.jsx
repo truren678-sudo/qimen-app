@@ -158,8 +158,8 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                 onChange={e => setSelectedRecordId(e.target.value)}
                 className="w-full h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-2 mb-4 bg-white">
                 <option value="">請選擇儲存盤局</option>
-                {savedRecords && savedRecords.map(r => (
-                    <option key={r.id} value={r.id}>{r.remark}</option>
+                {savedRecords && savedRecords.filter(r => (r.chartType || '時家置閏') === chartType).map(r => (
+                    <option key={r.id} value={r.id}>{r.remark} ({r.chartType || '時家置閏'})</option>
                 ))}
             </select>
 
