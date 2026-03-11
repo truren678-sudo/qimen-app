@@ -62,6 +62,9 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
     // ── 夏令時（DST）
     const [isDst, setIsDst] = useState(false);
 
+    // ── 真太陽時開關
+    const [useSolarTimeCorr, setUseSolarTimeCorr] = useState(true);
+
     // ── 地區選擇：是否展開
     const [locationOpen, setLocationOpen] = useState(false);
     const [locationTab, setLocationTab] = useState('china'); // 'china' | 'overseas'
@@ -142,7 +145,7 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
         }
 
         // 國內：真太陽時修正（命盤用）
-        if (chartType === '命盤' && locationTab === 'china' && selectedCity) {
+        if (chartType === '命盤' && locationTab === 'china' && selectedCity && useSolarTimeCorr) {
             const d = new Date(finalParams.year, finalParams.month - 1, finalParams.day, finalParams.hour, finalParams.minute + solarTimeCorr);
             finalParams = { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes() };
         }
@@ -340,13 +343,27 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                                     )}
                                     {selectedCity && (
                                         <div className="text-[11px] text-gray-500 px-1">
-                                            <span className="mr-2">經度 {selectedCity.lng}°E</span>
-                                            {solarTimeCorr !== 0 && (
-                                                <span className={solarTimeCorr > 0 ? 'text-blue-500' : 'text-orange-500'}>
-                                                    真太陽時修正 {solarTimeCorr > 0 ? '+' : ''}{solarTimeCorr} 分
+                                            <div className="flex items-center justify-between mb-0.5">
+                                                <span>經度 {selectedCity.lng}°E
+                                                {solarTimeCorr !== 0 && (
+                                                    <span className={solarTimeCorr > 0 ? ' text-blue-500' : ' text-orange-500'}>
+                                                        {' '}（修正 {solarTimeCorr > 0 ? '+' : ''}{solarTimeCorr} 分）
+                                                    </span>
+                                                )}
+                                                {solarTimeCorr === 0 && <span className="text-green-500"> （無需修正）</span>}
                                                 </span>
-                                            )}
-                                            {solarTimeCorr === 0 && <span className="text-green-500">無需修正</span>}
+                                                <div className="flex items-center gap-1.5 ml-2">
+                                                    <span className="text-[11px] text-gray-500">真太陽時</span>
+                                                    <button
+                                                        onClick={() => setUseSolarTimeCorr(v => !v)}
+                                                        className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${useSolarTimeCorr ? 'bg-[#4395CA]' : 'bg-gray-300'}`}>
+                                                        <span className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${useSolarTimeCorr ? 'translate-x-4' : 'translate-x-0'}`} />
+                                                    </button>
+                                                    <span className={`text-[11px] font-bold ${useSolarTimeCorr ? 'text-[#4395CA]' : 'text-gray-400'}`}>
+                                                        {useSolarTimeCorr ? '開' : '關'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
