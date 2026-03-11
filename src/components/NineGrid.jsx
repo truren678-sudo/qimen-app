@@ -178,37 +178,27 @@ export function NineGrid({ result }) {
     const isMingPan = result.chartType === '命盤';
 
     const containerRef = useRef(null);
-    const innerRef = useRef(null);
     const [scale, setScale] = useState(1);
-    const [innerH, setInnerH] = useState(540);
 
     useEffect(() => {
-        const updateScale = () => {
-            if (containerRef.current && innerRef.current) {
-                const parentWidth = containerRef.current.parentElement.offsetWidth;
-                const MARGIN = 16;
-                const availableW = parentWidth - MARGIN;
-
-                if (availableW > 0 && availableW < 540) {
-                    setScale(availableW / 540);
-                } else {
-                    setScale(1);
-                }
-                setInnerH(innerRef.current.offsetHeight);
+        const measure = () => {
+            const w = containerRef.current?.offsetWidth || 0;
+            if (w > 0 && w < 544) {
+                setScale(w / 544);
+            } else {
+                setScale(1);
             }
         };
 
-        const observer = new ResizeObserver(() => updateScale());
-        if (containerRef.current?.parentElement) observer.observe(containerRef.current.parentElement);
-        if (innerRef.current) observer.observe(innerRef.current);
-
-        updateScale();
+        const observer = new ResizeObserver(measure);
+        if (containerRef.current) observer.observe(containerRef.current);
+        measure();
         return () => observer.disconnect();
-    }, [result]);
+    }, []);
 
     return (
-        <div ref={containerRef} className="w-full flex justify-center overflow-hidden" style={{ height: scale < 1 ? innerH * scale : 'auto' }}>
-            <div ref={innerRef} className="flex flex-col items-center mt-6 mb-6 transform origin-top" style={{ transform: `scale(${scale})`, width: '540px' }}>
+        <div ref={containerRef} className="w-full">
+            <div className="flex flex-col items-center mt-6 mb-6 mx-auto" style={{ width: '540px', zoom: scale }}>
                 {/* 盤面上方 */}
                 {!isMingPan && (
                     <div className="text-[12px] text-gray-500 tracking-widest mb-1.5 flex items-center justify-center gap-2 w-full">
