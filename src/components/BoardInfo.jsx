@@ -2,9 +2,9 @@ const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
 function InfoItem({ label, value, valueClass = "text-[#4395CA]" }) {
     return (
-        <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700 tracking-wider min-w-[3em]">{label}：</span>
-            <span className={`text-sm font-bold tracking-widest ${valueClass}`}>{value}</span>
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <span className="text-sm font-medium text-gray-700 tracking-wider min-w-[3em] shrink-0">{label}：</span>
+            <span className={`text-sm font-bold tracking-widest shrink-0 ${valueClass}`}>{value}</span>
         </div>
     );
 }
@@ -54,27 +54,26 @@ export function BoardInfo({ result }) {
                 </div>
 
                 {/* 局盤資訊 */}
-                <div className="grid grid-cols-3 gap-x-12 gap-y-1.5 max-w-xl mb-4 text-left">
-                    <InfoItem label="起局" value={`${yinYang}${juNum} 局`} />
-                    <InfoItem label="排盤" value={chartType} />
-                    {isMingPan ? <div className="text-red-600 font-bold text-right pr-4 tracking-widest">{gender}命</div> : <div></div>}
+                <div className="w-full overflow-x-auto mb-4">
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-left w-fit mx-auto" style={{ minWidth: 'max-content' }}>
+                        <InfoItem label="起局" value={`${yinYang}${juNum} 局`} />
+                        <InfoItem label="排盤" value={chartType} />
 
-                    <InfoItem label="旬首" value={xunShou} />
-                    <InfoItem label="空亡" value={kongWang} valueClass="text-gray-800" />
-                    <div></div>
+                        <InfoItem label="旬首" value={xunShou} />
+                        <InfoItem label="空亡" value={kongWang} valueClass="text-gray-800" />
 
-                    <InfoItem label="符頭" value={fuTou} />
-                    <InfoItem label="驛馬" value={yiMa} valueClass="text-gray-800" />
-                    <div></div>
+                        <InfoItem label="符頭" value={fuTou} />
+                        <InfoItem label="驛馬" value={yiMa} valueClass="text-gray-800" />
 
-                    <InfoItem label="值符" value={zhiFuXing} />
-                    <InfoItem label="值使" value={zhiShiMen} />
-                    {fuYinFanYin ? <div className="text-red-600 font-bold text-right pr-4 tracking-widest">{fuYinFanYin}</div> : <div></div>}
+                        <InfoItem label="值符" value={zhiFuXing} />
+                        <InfoItem label="值使" value={zhiShiMen} />
 
-                    {/* 也可將節氣/元資訊放在這裡補足 */}
-                    <InfoItem label="節氣" value={`${jieqiName} · ${yuanName}`} valueClass="text-orange-600" />
-                    <div></div>
-                    <div></div>
+                        <div className="col-span-2 flex items-center gap-6 flex-wrap">
+                            <InfoItem label="節氣" value={`${jieqiName} · ${yuanName}`} valueClass="text-orange-600" />
+                            {isMingPan && <span className="text-red-600 font-bold tracking-widest">{gender}命</span>}
+                            {fuYinFanYin && <span className="text-red-600 font-bold tracking-widest">{fuYinFanYin}</span>}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
