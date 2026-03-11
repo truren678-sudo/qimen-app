@@ -421,16 +421,24 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
 
             {/* 命盤專屬設定：性別 */}
             {isMingPan && (
-                <div className="flex gap-4 mb-3 items-center">
-                    <span className="text-sm font-bold text-gray-700">性別：</span>
-                    {['男', '女'].map(g => (
-                        <label key={g} className="flex items-center gap-1 cursor-pointer">
-                            <input type="radio" name="gender" value={g} checked={gender === g}
-                                onChange={e => setGender(e.target.value)}
-                                className={g === '男' ? 'text-blue-600' : 'text-pink-500'} />
-                            <span className="text-sm text-gray-700">{g}</span>
-                        </label>
-                    ))}
+                <div className="flex gap-2 mb-3 items-center">
+                    <span className="text-sm font-bold text-gray-700 shrink-0">性別：</span>
+                    <div className="flex flex-1 gap-2">
+                        <button
+                            onClick={() => setGender('男')}
+                            className={`flex-1 h-8 text-sm font-bold rounded-md border-2 transition-colors ${gender === '男'
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-white text-gray-500 border-gray-300 hover:border-blue-300'}`}>
+                            ♂ 男命
+                        </button>
+                        <button
+                            onClick={() => setGender('女')}
+                            className={`flex-1 h-8 text-sm font-bold rounded-md border-2 transition-colors ${gender === '女'
+                                ? 'bg-pink-500 text-white border-pink-500'
+                                : 'bg-white text-gray-500 border-gray-300 hover:border-pink-300'}`}>
+                            ♀ 女命
+                        </button>
+                    </div>
                 </div>
             )}
 
