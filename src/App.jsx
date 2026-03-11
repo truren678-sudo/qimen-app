@@ -123,10 +123,10 @@ function App() {
     }
   };
 
-  // ── 排盤結果區（共用）
-  const ResultArea = () => (
-    <main className="flex-1 flex flex-col p-3 md:p-4 overflow-auto min-w-0">
-      <div className="w-full bg-white border border-gray-300 mb-4 p-2 shadow-sm rounded-sm">
+  // ── 排盤結果區（共用元素）
+  const resultAreaNode = (
+    <main className="flex-1 flex flex-col p-3 md:p-4 overflow-auto min-w-0 w-full">
+      <div className="w-full bg-white border border-gray-300 mb-4 p-2 shadow-sm rounded-sm shrink-0">
         <div className="flex justify-between items-center px-2">
           <h2 className="text-sm font-bold text-gray-700 tracking-wider">排盤結果</h2>
           <span className="text-[10px] text-gray-400">{result?.chartType || '時家奇門遁甲'}</span>
@@ -134,12 +134,12 @@ function App() {
       </div>
 
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-sm px-4 py-2 text-sm text-red-600">
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-sm px-4 py-2 text-sm text-red-600 shrink-0">
           ⚠ {error}
         </div>
       )}
 
-      <div className="flex flex-col mx-auto w-full bg-[#f2f4f7] p-3 md:p-6 border border-gray-200 shadow-sm rounded-md relative">
+      <div className="flex flex-col mx-auto w-full bg-[#f2f4f7] p-3 md:p-6 border border-gray-200 shadow-sm rounded-md relative shrink-0">
         {/* 盤局資訊區 */}
         <BoardInfo result={result} />
 
@@ -180,8 +180,8 @@ function App() {
     </main>
   );
 
-  // ── Sidebar 包裝（共用）
-  const SidebarArea = () => (
+  // ── Sidebar 包裝（共用元素）
+  const sidebarAreaNode = (
     <Sidebar
       timeParams={timeParams}
       setTimeParams={setTimeParams}
@@ -199,10 +199,10 @@ function App() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-[#eef1f5] font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#eef1f5] font-sans overflow-hidden w-full">
 
       {/* ── 頂部導覽列（奇門排盤 / 奇門曆） ── */}
-      <div className="flex justify-center items-center bg-white border-b border-gray-300 py-2 shadow-sm z-20 shrink-0">
+      <div className="flex justify-center items-center bg-white border-b border-gray-300 py-2 shadow-sm z-20 shrink-0 w-full">
         <div className="flex bg-gray-100 rounded-full p-1 border border-gray-200">
           <button
             onClick={() => setViewMode('calendar')}
@@ -224,22 +224,22 @@ function App() {
       ) : (
         <>
           {/* ── 桌面版：左右並排（md 以上） ── */}
-          <div className="hidden md:flex flex-1 overflow-hidden">
-            <SidebarArea />
-            <ResultArea />
+          <div className="hidden md:flex flex-1 overflow-hidden w-full">
+            {sidebarAreaNode}
+            {resultAreaNode}
           </div>
 
           {/* ── 手機版：分頁切換 ── */}
-          <div className="flex md:hidden flex-1 flex-col overflow-hidden">
+          <div className="flex md:hidden flex-1 flex-col overflow-hidden w-full">
             {/* 內容區 */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden w-full">
               {mobileTab === 'setting' ? (
-                <div className="h-full overflow-y-auto">
-                  <SidebarArea />
+                <div className="h-full overflow-y-auto w-full">
+                  {sidebarAreaNode}
                 </div>
               ) : (
-                <div className="h-full overflow-y-auto">
-                  <ResultArea />
+                <div className="h-full overflow-y-auto w-full">
+                  {resultAreaNode}
                 </div>
               )}
             </div>
