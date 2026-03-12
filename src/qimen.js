@@ -488,6 +488,17 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         if (doorPan[1] === '景門') fuYinFanYinStr += '門反';
     }
 
+    // 陰盤專用：地支對應宮位用於展示引干
+    const ZHI_PAL_MAP = {
+        '子': 1, '丑': 8, '寅': 8, '卯': 3, '辰': 4, '巳': 4,
+        '午': 9, '未': 2, '申': 2, '酉': 7, '戌': 6, '亥': 6
+    };
+
+    const isYinPan = chartType === '陰盤奇門';
+    // 陰盤引干對應宮位
+    const yinGanPalNum = isYinPan ? (ZHI_PAL_MAP[siZhu.hourZhi] || 0) : 0;
+    const yinGanValue = isYinPan ? siZhu.hourGan : '';
+
     const palaces = PALACE_LAYOUT.map(p => {
         const diG = diPan[p.num] || '';
         const tianG = tianPan[p.num] || '';
@@ -510,6 +521,7 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
             shen: isDayQimen ? '' : (shenPan[p.num] || ''),
             extraStar: '',
             extraGan: '',
+            yinGan: (isYinPan && p.num === yinGanPalNum) ? yinGanValue : '',
             doorHarm: harms.doorHarm,
             tianGanHarm: harms.tianGanHarm,
             diGanHarm: harms.diGanHarm,

@@ -93,10 +93,15 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan }) {
                 );
             })}
 
-            {/* 左側列 (Top: 宮位符號, Mid/Bot 預留數值) */}
+            {/* 左側列 (Top: 宮位符號+數字, Bot: 引干) */}
             <div className="absolute top-2 left-2 flex flex-col items-start leading-none z-10">
                 <span className="font-bold text-[18px] text-gray-900 tracking-tighter">{sym}{num}</span>
                 <span className="text-[15px] font-bold text-gray-900 tracking-widest mt-1">{name}</span>
+                {palace.yinGan && (
+                    <span className="text-[13px] font-bold text-orange-500 tracking-widest mt-2">
+                        引{palace.yinGan}
+                    </span>
+                )}
             </div>
 
             {/* 命盤專屬：大限區間 (顯示在宮內中左方) */}
