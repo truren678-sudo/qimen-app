@@ -488,18 +488,9 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         if (doorPan[1] === '景門') fuYinFanYinStr += '門反';
     }
 
-    // 陰盤專用：地支對應宮位用於展示引干
-    const ZHI_PAL_MAP = {
-        '子': 1, '丑': 8, '寅': 8, '卯': 3, '辰': 4, '巳': 4,
-        '午': 9, '未': 2, '申': 2, '酉': 7, '戌': 6, '亥': 6
-    };
-
     const isYinPan = chartType === '陰盤奇門';
-    // 陰盤引干對應宮位
-    const yinGanPalNum = isYinPan ? (ZHI_PAL_MAP[siZhu.hourZhi] || 0) : 0;
-    const yinGanValue = isYinPan ? siZhu.hourGan : '';
 
-    const palaces = PALACE_LAYOUT.map(p => {
+    let palaces = PALACE_LAYOUT.map(p => {
         const diG = diPan[p.num] || '';
         const tianG = tianPan[p.num] || '';
         const diGExtra = p.num === 2 ? (diPan[5] || '') : '';
@@ -521,7 +512,7 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
             shen: isDayQimen ? '' : (shenPan[p.num] || ''),
             extraStar: '',
             extraGan: '',
-            yinGan: (isYinPan && p.num === yinGanPalNum) ? yinGanValue : '',
+            yinGan: '',
             doorHarm: harms.doorHarm,
             tianGanHarm: harms.tianGanHarm,
             diGanHarm: harms.diGanHarm,
@@ -529,6 +520,30 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
             diGanExtraHarm: harms.diGanExtraHarm,
         };
     });
+
+    if (isYinPan) {
+        const RING_SEQ = [1, 8, 3, 4, 9, 2, 7, 6];
+        const tpArr = RING_SEQ.map(num => {
+            const p = palaces.find(x => x.num === num);
+            return p ? p.tianGan + (p.tianGanExtra || '') : '';
+        });
+
+        const targetStem = siZhu.hourGan === '甲' ? xunInfo.xunHeadGan : siZhu.hourGan;
+        let targetIdx = tpArr.findIndex(s => s.includes(targetStem));
+        if (targetIdx === -1) targetIdx = 0;
+
+        const zhiShiPalNum = +Object.keys(doorPan).find(k => doorPan[k] === xunInfo.zhiShiMen) || 1;
+        const startPalIdx = RING_SEQ.indexOf(zhiShiPalNum);
+
+        palaces = palaces.map(p => {
+            if (p.num === 5) return { ...p, yinGan: '' };
+            const i = RING_SEQ.indexOf(p.num);
+            if (i === -1) return { ...p, yinGan: '' };
+            const shift = (i - startPalIdx + 8) % 8;
+            const srcIdx = (targetIdx + shift) % 8;
+            return { ...p, yinGan: tpArr[srcIdx] };
+        });
+    }
 
     const targetZhiStr = chartType === '年家奇門' ? siZhu.yearZhi : chartType === '月家奇門' ? siZhu.monthZhi : chartType === '日家奇門' ? siZhu.dayZhi : siZhu.hourZhi;
     const xunName = dayQimenXun || (xunInfo.xunNo !== undefined ? XUN_NAMES[xunInfo.xunNo] : '');

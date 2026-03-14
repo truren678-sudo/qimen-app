@@ -178,28 +178,17 @@ export function NineGrid({ result }) {
     const isMingPan = result.chartType === '命盤';
     const isYinPan = result.chartType === '陰盤奇門';
 
-    // 陰盤引干：找出引干所在宮位和对應的陨列位置
-    // 宮局 Row1:[4,9,2] Row2:[3,5,7] Row3:[8,1,6]
-    // col: 0=左 1=中 2=右, row: 0=上 1=中 2=下
-    const PAL_POS = { 4:{row:0,col:0}, 9:{row:0,col:1}, 2:{row:0,col:2},
-                      3:{row:1,col:0}, 5:{row:1,col:1}, 7:{row:1,col:2},
-                      8:{row:2,col:0}, 1:{row:2,col:1}, 6:{row:2,col:2} };
-
-    let yinGanChar = '';
-    let yinGanPosRow = -1, yinGanPosCol = -1;
-    if (isYinPan) {
-        const yinPalace = result.palaces.find(p => p.yinGan);
-        if (yinPalace) {
-            yinGanChar = yinPalace.yinGan;
-            const pos = PAL_POS[yinPalace.num];
-            if (pos) { yinGanPosRow = pos.row; yinGanPosCol = pos.col; }
-        }
-    }
-
-    // 外框引干插入函數：回傳對應列的表示
-    const renderYinGanLabel = (targetRow, targetCol) => {
-        if (!yinGanChar || yinGanPosRow !== targetRow || yinGanPosCol !== targetCol) return null;
-        return <span className="text-[13px] font-bold text-orange-500 tracking-widest">引{yinGanChar}</span>;
+    const getOuterYinGan = (palNum) => {
+        if (!isYinPan) return null;
+        const p = result.palaces.find(x => x.num === palNum);
+        if (!p || !p.yinGan) return null;
+        return (
+            <div className="flex flex-col items-center justify-center text-[14px] text-gray-800 leading-tight font-medium">
+                {Array.from(p.yinGan).map((char, i) => (
+                    <span key={i}>{char}</span>
+                ))}
+            </div>
+        );
     };
 
     const containerRef = useRef(null);
@@ -226,25 +215,27 @@ export function NineGrid({ result }) {
             <div className="flex flex-col items-center mt-6 mb-6 mx-auto" style={{ width: '540px', zoom: scale }}>
                 {/* 盤面上方 */}
                 {!isMingPan && (
-                    <div className="text-[12px] text-gray-500 tracking-widest mb-1.5 flex items-center justify-center gap-3 w-full">
-                        {renderYinGanLabel(0, 0)}
-                        <span>▲ 南（巳 · 離 · 午）</span>
-                        {renderYinGanLabel(0, 1)}
-                        <span className="ml-auto mr-0">{renderYinGanLabel(0, 2)}</span>
+                    <div className="flex items-center w-[540px] px-[42px] mb-1.5 text-[12px] text-gray-500 tracking-widest">
+                         <div className="flex-1"></div>
+                         <div className="flex-1 flex justify-center items-center gap-2">
+                             {getOuterYinGan(9)}
+                             <span>▲ 南（巳 · 離 · 午）</span>
+                         </div>
+                         <div className="flex-1"></div>
                     </div>
                 )}
 
                 <div className="flex items-stretch w-[540px] shrink-0">
                     {/* 盤面左方 */}
-                    <div className={`${isMingPan ? 'w-[40px]' : 'w-[28px]'} shrink-0 flex flex-col items-center justify-around text-[12px] text-gray-500 tracking-[0.4em] py-2 gap-1`}
-                        style={{ writingMode: 'vertical-rl' }}>
-                        {!isMingPan && (
-                            <>
-                                <span className="text-orange-500">{yinGanPosCol === 0 && yinGanPosRow === 0 ? yinGanChar : ''}</span>
-                                <span className="text-orange-500">{yinGanPosCol === 0 && yinGanPosRow === 1 ? yinGanChar : ''}</span>
-                                <span className="text-orange-500">{yinGanPosCol === 0 && yinGanPosRow === 2 ? yinGanChar : ''}</span>
-                            </>
-                        )}{!isMingPan && '東（卯）'}
+                    <div className={`${isMingPan ? 'w-[40px]' : 'w-[42px]'} shrink-0 flex relative`}>
+                        <div className="w-[20px] flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]" style={{ writingMode: 'vertical-rl' }}>
+                            {!isMingPan && '東（卯）'}
+                        </div>
+                        <div className="flex-1 flex flex-col py-1">
+                            <div className="flex-1 flex items-center justify-center">{getOuterYinGan(4)}</div>
+                            <div className="flex-1 flex items-center justify-center">{getOuterYinGan(3)}</div>
+                            <div className="flex-1 flex items-center justify-center">{getOuterYinGan(8)}</div>
+                        </div>
                     </div>
 
                     {/* 正九宮格 */}
@@ -262,26 +253,27 @@ export function NineGrid({ result }) {
                     </div>
 
                     {/* 盤面右方 */}
-                    <div className={`${isMingPan ? 'w-[40px]' : 'w-[28px]'} shrink-0 flex flex-col items-center justify-around text-[12px] text-gray-500 tracking-[0.4em] py-2 gap-1`}
-                        style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                        {!isMingPan && '西（酉）'}
-                        {!isMingPan && (
-                            <>
-                                <span className="text-orange-500">{yinGanPosCol === 2 && yinGanPosRow === 2 ? yinGanChar : ''}</span>
-                                <span className="text-orange-500">{yinGanPosCol === 2 && yinGanPosRow === 1 ? yinGanChar : ''}</span>
-                                <span className="text-orange-500">{yinGanPosCol === 2 && yinGanPosRow === 0 ? yinGanChar : ''}</span>
-                            </>
-                        )}
+                    <div className={`${isMingPan ? 'w-[40px]' : 'w-[42px]'} shrink-0 flex relative`}>
+                        <div className="flex-1 flex flex-col py-1">
+                            <div className="flex-1 flex items-center justify-center">{getOuterYinGan(2)}</div>
+                            <div className="flex-1 flex items-center justify-center">{getOuterYinGan(7)}</div>
+                            <div className="flex-1 flex items-center justify-center">{getOuterYinGan(6)}</div>
+                        </div>
+                        <div className="w-[20px] flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                            {!isMingPan && '西（酉）'}
+                        </div>
                     </div>
                 </div>
 
                 {/* 盤面下方 */}
                 {!isMingPan && (
-                    <div className="text-[12px] text-gray-500 tracking-widest mt-1.5 flex items-center justify-center gap-3 w-full">
-                        {renderYinGanLabel(2, 0)}
-                        <span>▼ 北（亥 · 坎 · 子）</span>
-                        {renderYinGanLabel(2, 1)}
-                        <span className="ml-auto mr-0">{renderYinGanLabel(2, 2)}</span>
+                    <div className="flex items-center w-[540px] px-[42px] mt-1.5 text-[12px] text-gray-500 tracking-widest">
+                         <div className="flex-1"></div>
+                         <div className="flex-1 flex justify-center items-center gap-2">
+                             {getOuterYinGan(1)}
+                             <span>▼ 北（亥 · 坎 · 子）</span>
+                         </div>
+                         <div className="flex-1"></div>
                     </div>
                 )}
             </div>
