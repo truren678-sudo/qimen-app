@@ -84,6 +84,18 @@ export function exportFullChart(result) {
     md += `- **排盤系統**：${chartType}${isMingPan ? `（${gender}）` : ''}\n`;
     md += `- **公曆時間**：${solar.year}年${solar.month}月${solar.day}日 ${pad(solar.hour)}:${pad(solar.minute)}\n`;
     
+    if (isMingPan) {
+        const currentYear = new Date().getFullYear();
+        const nominalAge = currentYear - solar.year + 1;
+        let currentDaXianStr = '無';
+        const currentPalace = result.palaces.find(p => p.daXian && nominalAge >= p.daXian.start && nominalAge <= p.daXian.end);
+        if (currentPalace) {
+            currentDaXianStr = `${currentPalace.daXian.start}~${currentPalace.daXian.end}歲 (${currentPalace.num}宮 ${currentPalace.name})`;
+        }
+        md += `- **當前虛歲**：${nominalAge} 歲\n`;
+        md += `- **當前大限**：${currentDaXianStr}\n`;
+    }
+
     if (jieqiName && yuanName) {
         md += `- **節氣**：${jieqiName} · ${yuanName}\n`;
     }
