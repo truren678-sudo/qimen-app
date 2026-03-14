@@ -2,6 +2,7 @@
  * 九宮格元件 v3 - 三欄式精準佈局
  */
 import React, { useRef, useEffect, useState } from 'react';
+import { exportPalace } from '../utils/exportMarkdown';
 
 // 色彩配置：符合參考圖主要黑/灰，部分紅/綠
 const DOOR_CLR = {
@@ -39,7 +40,7 @@ const getHarmText = (harm) => {
     return harm;
 };
 
-export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan }) {
+export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy }) {
     const { num, name, sym, shen, star, door, tianGan, diGan, tianGanExtra, diGanExtra, extraStar, doorHarm, tianGanHarm, diGanHarm, tianGanExtraHarm, diGanExtraHarm, daXian, personnel12 } = palace;
     const isCenter = num === 5;
 
@@ -69,6 +70,13 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan }) {
                 )}
                 {isMingPan && <span className="text-[24px] font-bold text-transparent bg-clip-text bg-gradient-to-b from-purple-800 to-indigo-800 opacity-60 font-serif">大 限</span>}
                 <span className="absolute bottom-2 text-[11px] text-gray-400">天禽(寄坤二)</span>
+
+                {/* 單宮拷貝按鈕 */}
+                {onCopy && (
+                    <button onClick={onCopy} className="absolute bottom-1 right-1 text-[10px] text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-200 border border-gray-200 rounded px-1 min-w-[16px] min-h-[16px] flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity" title="複製此宮位 MD">
+                        📋
+                    </button>
+                )}
             </div>
         );
     }
@@ -159,6 +167,13 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan }) {
                     {doorHarm && <span className={`text-[12px] font-bold ${getHarmColor(doorHarm)} mt-[2px]`}>{getHarmText(doorHarm)}</span>}
                 </div>
             </div>
+
+            {/* 單宮拷貝按鈕 */}
+            {onCopy && (
+                <button onClick={onCopy} className="absolute bottom-1 right-1 text-[10px] text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-200 border border-gray-200 rounded px-1 min-w-[16px] min-h-[16px] flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity z-20" title="複製此宮位 MD">
+                    📋
+                </button>
+            )}
         </div>
     );
 }
@@ -248,6 +263,10 @@ export function NineGrid({ result }) {
                                 isMa={maPal === p.num}
                                 isDayQimen={result.isDayQimen}
                                 isMingPan={isMingPan}
+                                onCopy={() => {
+                                    const md = exportPalace(result, p.num);
+                                    if(md) navigator.clipboard.writeText(md).then(() => alert(`已複製 ${p.name}宮 (\`${p.num}\`) 的 Markdown！`));
+                                }}
                             />
                         ))}
                     </div>

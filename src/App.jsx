@@ -4,6 +4,7 @@ import { BoardInfo } from './components/BoardInfo';
 import { NineGrid } from './components/NineGrid';
 import { QimenCalendarView } from './components/QimenCalendarView';
 import { calculateQimen } from './qimen';
+import { exportFullChart } from './utils/exportMarkdown';
 
 function App() {
   const initDate = new Date();
@@ -128,7 +129,21 @@ function App() {
     <main className="flex-1 flex flex-col p-3 md:p-4 overflow-auto min-w-0 w-full">
       <div className="w-full bg-white border border-gray-300 mb-4 p-2 shadow-sm rounded-sm shrink-0">
         <div className="flex justify-between items-center px-2">
-          <h2 className="text-sm font-bold text-gray-700 tracking-wider">排盤結果</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-bold text-gray-700 tracking-wider">排盤結果</h2>
+            {result && (
+              <button
+                onClick={() => {
+                  const md = exportFullChart(result);
+                  navigator.clipboard.writeText(md).then(() => alert('全盤 Markdown 複製成功！'));
+                }}
+                className="text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer"
+                title="複製為 Markdown 格式以提供給 AI"
+              >
+                📋 全盤 MD
+              </button>
+            )}
+          </div>
           <span className="text-[10px] text-gray-400">{result?.chartType || '時家奇門遁甲'}</span>
         </div>
       </div>
