@@ -597,7 +597,7 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         const daXian = {};
         let currentPalace = juNum;
         let startAge = 1;
-        let endAge = juNum; // 第一大限上限為局數
+        let endAge = (juNum === 1) ? 10 : juNum; // 第一大限上限為局數，若為陰/陽1局則改為1到10歲
 
         for (let i = 0; i < 9; i++) {
             daXian[currentPalace] = { start: startAge, end: endAge };

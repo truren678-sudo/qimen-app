@@ -111,8 +111,35 @@ export function exportFullChart(result) {
         if (currentPalace) {
             currentDaXianStr = `${currentPalace.daXian.start}~${currentPalace.daXian.end}歲 (${currentPalace.num}宮 ${currentPalace.name})`;
         }
+        // 命主八字
+        md += `- **命主八字**：${result.siZhu.yearGan}${result.siZhu.yearZhi}年 ${result.siZhu.monthGan}${result.siZhu.monthZhi}月 ${result.siZhu.dayGan}${result.siZhu.dayZhi}日 ${result.siZhu.hourGan}${result.siZhu.hourZhi}時\n`;
         md += `- **當前虛歲**：${nominalAge} 歲\n`;
         md += `- **當前大限**：${currentDaXianStr}\n`;
+
+        // 五行對照表
+        const WUXING_MAP = { 1:'水', 2:'土', 3:'木', 4:'木', 5:'土', 6:'金', 7:'金', 8:'土', 9:'火' };
+        
+        // 命宮(時支宮)：含有「命宮」的人事宮
+        const mgPalace = result.palaces.find(p => p.personnel12 && p.personnel12.some(x => x.name === '命宮'));
+        const mgWuXing = mgPalace ? WUXING_MAP[mgPalace.num] : '未知';
+        
+        // 身宮(日干宮)：天盤干等於日干的宮位
+        const sgPalace = result.palaces.find(p => p.tianGan === result.siZhu.dayGan || p.tianGanExtra === result.siZhu.dayGan);
+        const sgWuXing = sgPalace ? WUXING_MAP[sgPalace.num] : '未知';
+        
+        // 平台宮(時干宮)：天盤干等於時干的宮位 (若為甲，需轉為旬首干)
+        const XUN_HEAD_MAP = { '甲子': '戊', '甲戌': '己', '甲申': '庚', '甲午': '辛', '甲辰': '壬', '甲寅': '癸' };
+        const realHourGan = result.siZhu.hourGan === '甲' ? (XUN_HEAD_MAP[result.xunShou.replace('旬', '')] || '甲') : result.siZhu.hourGan;
+        const ptPalace = result.palaces.find(p => p.tianGan === realHourGan || p.tianGanExtra === realHourGan);
+        const ptWuXing = ptPalace ? WUXING_MAP[ptPalace.num] : '未知';
+
+        // 整理輸出格式，例如: 命宮(時支宮)：1宮 坎 (五行:水，宮內天干:戊) 
+        // 根據使用者說的 "五行(甲乙丙丁戊己庚辛壬癸)"
+        const getGanStr = (pal) => pal ? (pal.tianGan || pal.diGan || '無') : '無';
+        
+        md += `- **命宮 (時支宮)**：${mgPalace ? `${mgPalace.num}宮 ${mgPalace.name} (天干: ${getGanStr(mgPalace)}, 五行: ${mgWuXing})` : '未知'}\n`;
+        md += `- **身宮 (日干落宮)**：${sgPalace ? `${sgPalace.num}宮 ${sgPalace.name} (天干: ${getGanStr(sgPalace)}, 五行: ${sgWuXing})` : '未知'}\n`;
+        md += `- **平台宮 (時干落宮)**：${ptPalace ? `${ptPalace.num}宮 ${ptPalace.name} (天干: ${getGanStr(ptPalace)}, 五行: ${ptWuXing})` : '未知'}\n`;
     }
 
     if (jieqiName && yuanName) {
