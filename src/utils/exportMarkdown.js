@@ -48,12 +48,31 @@ export function exportPalace(result, palaceNum) {
         md += `- **引干**：${p.yinGan}\n`;
     }
 
-    // 四害統整 (只列出門迫與空亡馬星，干的刑墓已經在天干地干列出)
+    // 四害與特殊神煞統整 (門迫、空亡、驛馬)
     const harms = [];
     if (p.doorHarm === '迫') harms.push('門迫');
-    if (result.kongWang && result.kongWang.includes(p.name)) harms.push('空亡');
-    // 如果需要更精確的空亡地支判斷，可用元件中 getKongWangPals 的概念，此處簡化為顯示有就好
-    // 若要呈現精確的馬星，需要額外傳入
+    
+    // 定義地支對應宮位
+    const DZ_PAL = {
+        '子': 1, '丑': 8, '寅': 8, '卯': 3, '辰': 4, '巳': 4,
+        '午': 9, '未': 2, '申': 2, '酉': 7, '戌': 6, '亥': 6
+    };
+
+    // 判斷空亡
+    if (result.kongWang) {
+        const kwPals = Array.from(result.kongWang).map(c => DZ_PAL[c]).filter(Boolean);
+        if (kwPals.includes(p.num)) {
+            harms.push('空亡');
+        }
+    }
+
+    // 判斷驛馬
+    if (result.yiMa) {
+        const maPal = DZ_PAL[result.yiMa];
+        if (maPal === p.num) {
+            harms.push('驛馬');
+        }
+    }
     
     if (harms.length > 0) {
         md += `- **其他資訊**：${harms.join('、')}\n`;

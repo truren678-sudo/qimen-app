@@ -254,7 +254,7 @@ export function NineGrid({ result }) {
                     </div>
 
                     {/* 正九宮格 */}
-                    <div className="grid grid-cols-3 flex-1 border border-gray-400 shadow-sm relative overflow-hidden">
+                    <div className="grid grid-cols-3 flex-1 border border-gray-400 shadow-sm relative">
                         {result.palaces.map(p => (
                             <PalaceCell
                                 key={p.num}
