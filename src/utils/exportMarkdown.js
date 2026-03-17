@@ -85,6 +85,42 @@ export function exportPalace(result, palaceNum) {
         }
         if (p.daXian) {
             md += `- **大限**：${p.daXian.start} ~ ${p.daXian.end} 歲\n`;
+            
+            // 計算此宮位（包含哪些地支）在此大限期間的流年對應
+            // 找出 p.num 這個宮位擁有哪些地支
+            const palZhis = Object.keys(DZ_PAL).filter(z => DZ_PAL[z] === p.num);
+            if (palZhis.length > 0) {
+                const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+                const DI_ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+                const bYearGanIdx = TIAN_GAN.indexOf(result.siZhu.yearGan);
+                const bYearZhiIdx = DI_ZHI.indexOf(result.siZhu.yearZhi);
+                
+                const currentYear = new Date().getFullYear();
+                const nominalAgeThisYear = currentYear - result.solar.year + 1;
+                
+                let liuNians = [];
+                for (let age = p.daXian.start; age <= p.daXian.end; age++) {
+                    const offset = age - 1; // 虛歲1歲為出生當年 (offset=0)
+                    const yGanIdx = (bYearGanIdx + offset) % 10;
+                    const yZhiIdx = (bYearZhiIdx + offset) % 12;
+                    const yGan = TIAN_GAN[yGanIdx];
+                    const yZhi = DI_ZHI[yZhiIdx];
+                    
+                    // 若這年的地支落在此宮位
+                    if (palZhis.includes(yZhi)) {
+                        const isCurrentYear = age === nominalAgeThisYear;
+                        let line = `${yGan}${yZhi}年 ${age}歲`;
+                        if (isCurrentYear) line += ' (今年)';
+                        liuNians.push(line);
+                    }
+                }
+                if (liuNians.length > 0) {
+                    md += `- **大限流年**：\n`;
+                    liuNians.forEach(ln => {
+                        md += `  - ${ln}\n`;
+                    });
+                }
+            }
         }
     }
 
