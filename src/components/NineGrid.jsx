@@ -3,6 +3,7 @@
  */
 import React, { useRef, useEffect, useState } from 'react';
 import { exportPalace } from '../utils/exportMarkdown';
+import { BehaviorFengShuiModal } from './BehaviorFengShuiModal';
 
 // 色彩配置：符合參考圖主要黑/灰，部分紅/綠
 const DOOR_CLR = {
@@ -40,7 +41,7 @@ const getHarmText = (harm) => {
     return harm;
 };
 
-export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy }) {
+export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy, onPalaceClick }) {
     const { num, name, sym, shen, star, door, tianGan, diGan, tianGanExtra, diGanExtra, extraStar, doorHarm, tianGanHarm, diGanHarm, tianGanExtraHarm, diGanExtraHarm, daXian, personnel12 } = palace;
     const isCenter = num === 5;
 
@@ -82,7 +83,7 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
     }
 
     return (
-        <div className="relative bg-white border border-gray-300 min-h-[160px] p-2">
+        <div className={`relative bg-white border border-gray-300 min-h-[160px] p-2${onPalaceClick ? ' cursor-pointer hover:bg-amber-50/40 transition-colors' : ''}`} onClick={onPalaceClick ? () => onPalaceClick(palace) : undefined}>
 
             {/* 命盤專屬：顯示在宮位外圍的人事十二宮 */}
             {personnel12 && personnel12.map((p, idx) => {
@@ -168,6 +169,13 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
                 </div>
             </div>
 
+            {/* 命盤專屬：顯示在宮位底部的流年歲數 */}
+            {isMingPan && palace.liuNianAges && palace.liuNianAges.length > 0 && (
+                <div className="absolute bottom-0.5 w-full flex justify-center text-[10px] text-gray-500 tracking-tighter pointer-events-none">
+                    流年: {palace.liuNianAges.join(', ')}
+                </div>
+            )}
+
             {/* 單宮拷貝按鈕 */}
             {onCopy && (
                 <button onClick={onCopy} className="absolute bottom-1 right-1 text-[10px] text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-200 border border-gray-200 rounded px-1 min-w-[16px] min-h-[16px] flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity z-20" title="複製此宮位 MD">
@@ -192,9 +200,11 @@ export function NineGrid({ result }) {
 
     const isMingPan = result.chartType === '命盤';
     const isYinPan = result.chartType === '陰盤奇門';
+    const isShiJia = result.chartType === '時家置閏';
+
+    const [selectedPalace, setSelectedPalace] = useState(null);
 
     const getOuterYinGan = (palNum) => {
-        if (!isYinPan) return null;
         const p = result.palaces.find(x => x.num === palNum);
         if (!p || !p.yinGan) return null;
         return (
@@ -226,6 +236,7 @@ export function NineGrid({ result }) {
     }, []);
 
     return (
+    <>
         <div ref={containerRef} className="w-full">
             <div className="flex flex-col items-center mt-6 mb-6 mx-auto" style={{ width: '540px', zoom: scale }}>
                 {/* 盤面上方 */}
@@ -267,6 +278,7 @@ export function NineGrid({ result }) {
                                     const md = exportPalace(result, p.num);
                                     if(md) navigator.clipboard.writeText(md).then(() => alert(`已複製 ${p.name}宮 (\`${p.num}\`) 的 Markdown！`));
                                 }}
+                                onPalaceClick={isShiJia ? (pal) => setSelectedPalace(pal) : undefined}
                             />
                         ))}
                     </div>
@@ -297,5 +309,15 @@ export function NineGrid({ result }) {
                 )}
             </div>
         </div>
+
+        {/* 行為風水指導 Modal */}
+        {selectedPalace && isShiJia && (
+            <BehaviorFengShuiModal
+                palace={selectedPalace}
+                result={result}
+                onClose={() => setSelectedPalace(null)}
+            />
+        )}
+    </>
     );
 }

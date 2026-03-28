@@ -521,29 +521,29 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         };
     });
 
-    if (isYinPan) {
-        const RING_SEQ = [1, 8, 3, 4, 9, 2, 7, 6];
-        const tpArr = RING_SEQ.map(num => {
-            const p = palaces.find(x => x.num === num);
-            return p ? p.tianGan + (p.tianGanExtra || '') : '';
-        });
+    // 陰盤或陽盤皆可計算引干 (YinGan)
+    const RING_SEQ = [1, 8, 3, 4, 9, 2, 7, 6];
+    const tpArr = RING_SEQ.map(num => {
+        const p = palaces.find(x => x.num === num);
+        // 如果是日家奇門，天干規則不同，引干可能不適用，但仍照樣回傳現有天干
+        return p ? p.tianGan + (p.tianGanExtra || '') : '';
+    });
 
-        const targetStem = siZhu.hourGan === '甲' ? xunInfo.xunHeadGan : siZhu.hourGan;
-        let targetIdx = tpArr.findIndex(s => s.includes(targetStem));
-        if (targetIdx === -1) targetIdx = 0;
+    const targetStem = siZhu.hourGan === '甲' ? xunInfo.xunHeadGan : siZhu.hourGan;
+    let targetIdx = tpArr.findIndex(s => s.includes(targetStem));
+    if (targetIdx === -1) targetIdx = 0;
 
-        const zhiShiPalNum = +Object.keys(doorPan).find(k => doorPan[k] === xunInfo.zhiShiMen) || 1;
-        const startPalIdx = RING_SEQ.indexOf(zhiShiPalNum);
+    const zhiShiPalNum = +Object.keys(doorPan).find(k => doorPan[k] === xunInfo.zhiShiMen) || 1;
+    const startPalIdx = RING_SEQ.indexOf(zhiShiPalNum);
 
-        palaces = palaces.map(p => {
-            if (p.num === 5) return { ...p, yinGan: '' };
-            const i = RING_SEQ.indexOf(p.num);
-            if (i === -1) return { ...p, yinGan: '' };
-            const shift = (i - startPalIdx + 8) % 8;
-            const srcIdx = (targetIdx + shift) % 8;
-            return { ...p, yinGan: tpArr[srcIdx] };
-        });
-    }
+    palaces = palaces.map(p => {
+        if (p.num === 5) return { ...p, yinGan: '' };
+        const i = RING_SEQ.indexOf(p.num);
+        if (i === -1) return { ...p, yinGan: '' };
+        const shift = (i - startPalIdx + 8) % 8;
+        const srcIdx = (targetIdx + shift) % 8;
+        return { ...p, yinGan: tpArr[srcIdx] };
+    });
 
     const targetZhiStr = chartType === '年家奇門' ? siZhu.yearZhi : chartType === '月家奇門' ? siZhu.monthZhi : chartType === '日家奇門' ? siZhu.dayZhi : siZhu.hourZhi;
     const xunName = dayQimenXun || (xunInfo.xunNo !== undefined ? XUN_NAMES[xunInfo.xunNo] : '');
@@ -612,11 +612,28 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
             }
         }
 
+        // 計算流年歲數 (1~70歲)
+        const DZ_PAL_MAP = {
+            '子': 1, '丑': 8, '寅': 8, '卯': 3, '辰': 4, '巳': 4,
+            '午': 9, '未': 2, '申': 2, '酉': 7, '戌': 6, '亥': 6
+        };
+        const liuNianAges = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [] };
+        const bYearZhiIdx = DI_ZHI.indexOf(siZhu.yearZhi);
+        for (let age = 1; age <= 70; age++) {
+            const yZhiIdx = (bYearZhiIdx + age - 1) % 12;
+            const yZhi = DI_ZHI[yZhiIdx];
+            const pNum = DZ_PAL_MAP[yZhi];
+            if (pNum && liuNianAges[pNum]) {
+                liuNianAges[pNum].push(age);
+            }
+        }
+
         // 綁定到宮位
         baseResult.palaces = baseResult.palaces.map(p => ({
             ...p,
             personnel12: palaces12[p.num] || [],
-            daXian: daXian[p.num]
+            daXian: daXian[p.num],
+            liuNianAges: liuNianAges[p.num] || []
         }));
         baseResult.chartType = '命盤';
         baseResult.gender = gender;

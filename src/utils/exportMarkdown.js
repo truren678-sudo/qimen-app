@@ -85,42 +85,9 @@ export function exportPalace(result, palaceNum) {
         }
         if (p.daXian) {
             md += `- **大限**：${p.daXian.start} ~ ${p.daXian.end} 歲\n`;
-            
-            // 計算此宮位（包含哪些地支）在此大限期間的流年對應
-            // 找出 p.num 這個宮位擁有哪些地支
-            const palZhis = Object.keys(DZ_PAL).filter(z => DZ_PAL[z] === p.num);
-            if (palZhis.length > 0) {
-                const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
-                const DI_ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-                const bYearGanIdx = TIAN_GAN.indexOf(result.siZhu.yearGan);
-                const bYearZhiIdx = DI_ZHI.indexOf(result.siZhu.yearZhi);
-                
-                const currentYear = new Date().getFullYear();
-                const nominalAgeThisYear = currentYear - result.solar.year + 1;
-                
-                let liuNians = [];
-                for (let age = p.daXian.start; age <= p.daXian.end; age++) {
-                    const offset = age - 1; // 虛歲1歲為出生當年 (offset=0)
-                    const yGanIdx = (bYearGanIdx + offset) % 10;
-                    const yZhiIdx = (bYearZhiIdx + offset) % 12;
-                    const yGan = TIAN_GAN[yGanIdx];
-                    const yZhi = DI_ZHI[yZhiIdx];
-                    
-                    // 若這年的地支落在此宮位
-                    if (palZhis.includes(yZhi)) {
-                        const isCurrentYear = age === nominalAgeThisYear;
-                        let line = `${yGan}${yZhi}年 ${age}歲`;
-                        if (isCurrentYear) line += ' (今年)';
-                        liuNians.push(line);
-                    }
-                }
-                if (liuNians.length > 0) {
-                    md += `- **大限流年**：\n`;
-                    liuNians.forEach(ln => {
-                        md += `  - ${ln}\n`;
-                    });
-                }
-            }
+        }
+        if (p.liuNianAges && p.liuNianAges.length > 0) {
+            md += `- **流年歲數 (1~70歲)**：${p.liuNianAges.join('、')} 歲\n`;
         }
     }
 
@@ -132,73 +99,164 @@ export function exportFullChart(result) {
     const { chartType, solar, yinYang, juNum, xunShou, kongWang, yiMa, zhiFuXing, zhiShiMen, jieqiName, yuanName, gender, fuYinFanYin } = result;
     const isMingPan = chartType === '命盤';
 
-    let md = `# 奇門遁甲排盤結果\n\n`;
-    
-    // 基本資訊區塊
-    md += `- **起局**：${yinYang}${juNum}局\n`;
-    md += `- **排盤系統**：${chartType}${isMingPan ? `（${gender}）` : ''}\n`;
-    md += `- **公曆時間**：${solar.year}年${solar.month}月${solar.day}日 ${pad(solar.hour)}:${pad(solar.minute)}\n`;
-    
+    let md = '';
+
     if (isMingPan) {
+        md += `# 命主：奇門命盤（${gender}命）\n`;
+        md += `- 出生：${solar.year}年${pad(solar.month)}月${pad(solar.day)}日 ${result.siZhu.hourZhi}時\n`;
+        md += `- 局數：${yinYang}${juNum}局\n`;
+
+        const WUXING_MAP = { 1: '水', 2: '土', 3: '木', 4: '木', 5: '土', 6: '金', 7: '金', 8: '土', 9: '火' };
+        const PAL_NAME = { 1: '坎', 8: '艮', 3: '震', 4: '巽', 9: '離', 2: '坤', 7: '兌', 6: '乾' };
+        const DZ_PAL = { '子': 1, '丑': 8, '寅': 8, '卯': 3, '辰': 4, '巳': 4, '午': 9, '未': 2, '申': 2, '酉': 7, '戌': 6, '亥': 6 };
+
+        // 身宮
+        const sgPalace = result.palaces.find(p => p.tianGan === result.siZhu.dayGan || p.tianGanExtra === result.siZhu.dayGan);
+        const sgStr = sgPalace ? `（身宮：${PAL_NAME[sgPalace.num]}${sgPalace.num}宮）` : '';
+        md += `- 日主天干：${result.siZhu.dayGan}${sgStr}\n`;
+
+        // 空亡
+        let kwStr = '無';
+        if (kongWang) {
+            const kwPals = Array.from(kongWang).map(c => DZ_PAL[c]).filter(Boolean);
+            const uniqKw = [...new Set(kwPals)];
+            kwStr = uniqKw.map(n => `${PAL_NAME[n]}${n}宮`).join('、');
+        }
+        md += `- 空亡：${kwStr}\n`;
+
+        // 馬星
+        let maStr = '無';
+        if (yiMa) {
+            const maPal = DZ_PAL[yiMa];
+            maStr = `${PAL_NAME[maPal]}${maPal}宮`;
+        }
+        md += `- 馬星：${maStr}\n`;
+
+        // 目前大限
         const currentYear = new Date().getFullYear();
         const nominalAge = currentYear - solar.year + 1;
-        let currentDaXianStr = '無';
         const currentPalace = result.palaces.find(p => p.daXian && nominalAge >= p.daXian.start && nominalAge <= p.daXian.end);
+        
+        // 取得大限順序
+        const sortedPals = [...result.palaces].filter(p => p.daXian).sort((a, b) => a.daXian.start - b.daXian.start);
+        let daXianText = '無';
+        let currentLimitIndex = -1;
         if (currentPalace) {
-            currentDaXianStr = `${currentPalace.daXian.start}~${currentPalace.daXian.end}歲 (${currentPalace.num}宮 ${currentPalace.name})`;
+            currentLimitIndex = sortedPals.findIndex(p => p.num === currentPalace.num);
+            daXianText = `${nominalAge}歲，第${currentLimitIndex + 1}大限（${PAL_NAME[currentPalace.num]}${currentPalace.num}宮，${currentPalace.daXian.start}～${currentPalace.daXian.end}歲）`;
         }
-        // 命主八字
-        md += `- **命主八字**：${result.siZhu.yearGan}${result.siZhu.yearZhi}年 ${result.siZhu.monthGan}${result.siZhu.monthZhi}月 ${result.siZhu.dayGan}${result.siZhu.dayZhi}日 ${result.siZhu.hourGan}${result.siZhu.hourZhi}時\n`;
-        md += `- **當前虛歲**：${nominalAge} 歲\n`;
-        md += `- **當前大限**：${currentDaXianStr}\n`;
+        md += `- 目前：${daXianText}\n\n`;
 
-        // 五行對照表
-        const WUXING_MAP = { 1:'水', 2:'土', 3:'木', 4:'木', 5:'土', 6:'金', 7:'金', 8:'土', 9:'火' };
+        // 各宮符號 Table
+        md += `## 各宮符號\n\n`;
+        md += `| 宮位 | 人事宮 | 八神 | 九星 | 八門 | 天盤干 | 地盤干 | 四害 | 大限 |\n`;
+        md += `|------|--------|------|------|------|--------|--------|------|------|\n`;
+
+        const PERSONNEL_ORDER = ['命宮', '兄弟', '夫妻', '子女', '財帛', '疾厄', '遷移', '交友', '事業', '田宅', '福德', '父母'];
+        const seenPalaces = new Set();
         
-        // 命宮(時支宮)：含有「命宮」的人事宮
-        const mgPalace = result.palaces.find(p => p.personnel12 && p.personnel12.some(x => x.name === '命宮'));
-        const mgWuXing = mgPalace ? WUXING_MAP[mgPalace.num] : '未知';
+        // 顯示名稱統一加宮
+        const withGong = (name) => name.endsWith('宮') ? name : name + '宮';
+
+        // 尋找人事宮對應的物理宮位
+        const findPalaceForPersonnel = (pName) => {
+            const searchName = pName.replace('宮', '');
+            return result.palaces.find(p => p.personnel12 && p.personnel12.some(x => x.name.replace('宮', '') === searchName));
+        };
+
+        // 判斷某宮是否為當前大限
+        const isCurrentDaXian = (pal) => currentPalace && currentPalace.num === pal.num;
+
+        PERSONNEL_ORDER.forEach((pNameFull) => {
+            const pName = withGong(pNameFull);
+            const pal = findPalaceForPersonnel(pName);
+            if (!pal) return;
+
+            const palStr = `${PAL_NAME[pal.num]}${pal.num}宮（${WUXING_MAP[pal.num]}）`;
+            if (seenPalaces.has(pal.num)) {
+                // 重複宮位（同一物理宮有多個人事宮）
+                const firstPersonnel = pal.personnel12[0]?.name;
+                const refName = withGong(firstPersonnel);
+                const daXianStr = pal.daXian ? `${pal.daXian.start}歲` : '—';
+                md += `| ${PAL_NAME[pal.num]}${pal.num}宮 | ${pName} | （同${refName}）| — | — | — | — | — | ${daXianStr} |\n`;
+            } else {
+                seenPalaces.add(pal.num);
+                const harms = [];
+                if (pal.doorHarm === '迫') harms.push('門迫');
+                if (pal.tianGanHarm) harms.push(pal.tianGanHarm);
+                if (pal.diGanHarm) harms.push(pal.diGanHarm);
+                if (kwStr.includes(`${pal.num}宮`)) harms.push('空亡');
+                if (maStr.includes(`${pal.num}宮`)) harms.push('驛馬');
+                const harmStr = harms.length > 0 ? harms.join('、') : '無';
+                
+                const tG = pal.tianGanExtra ? `${pal.tianGan}/${pal.tianGanExtra}` : pal.tianGan;
+                const dG = pal.diGanExtra ? `${pal.diGan}/${pal.diGanExtra}` : pal.diGan;
+                
+                const daXianStr = pal.daXian ? `${pal.daXian.start}歲${isCurrentDaXian(pal) ? '▶' : ''}` : '—';
+                
+                md += `| ${palStr} | ${pName} | ${pal.shen || '—'} | ${pal.star || '—'} | ${pal.door || '—'} | ${tG || '—'} | ${dG || '—'} | ${harmStr} | ${daXianStr} |\n`;
+            }
+        });
+
+        md += `\n## 大限排列（${gender}命${result.isYin ? '陰遁逆數' : '陽遁順數'}）\n`;
+        sortedPals.forEach((p, idx) => {
+            const isCurrent = currentPalace && currentPalace.num === p.num;
+            const palStr = `${PAL_NAME[p.num]}${p.num}宮（${WUXING_MAP[p.num]}）`;
+            md += `- 第${idx + 1}限：${p.daXian.start}～${p.daXian.end}歲，${palStr}${isCurrent ? ' ▶ 當前' : ''}\n`;
+        });
+
+        if (currentPalace && currentLimitIndex !== -1) {
+            md += `\n## 流年地支對照（第${currentLimitIndex + 1}大限 ${currentPalace.daXian.start}～${currentPalace.daXian.end}歲）\n`;
+            const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+            const DI_ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+            const bYearZhiIdx = DI_ZHI.indexOf(result.siZhu.yearZhi);
+            
+            for (let age = currentPalace.daXian.start; age <= currentPalace.daXian.end; age++) {
+                const yearNum = solar.year + age - 1;
+                const yZhiIdx = (bYearZhiIdx + age - 1) % 12;
+                const yZhi = DI_ZHI[yZhiIdx];
+                const pNum = DZ_PAL[yZhi];
+                const pName = PAL_NAME[pNum];
+                
+                let pPalaceStr = '';
+                const pPalaceObj = result.palaces.find(x => x.num === pNum);
+                if (pPalaceObj && pPalaceObj.personnel12 && pPalaceObj.personnel12.length > 0) {
+                    const firstPer = pPalaceObj.personnel12[0].name;
+                    pPalaceStr = firstPer.endsWith('宮') ? firstPer : firstPer + '宮';
+                }
+                
+                md += `- ${age}歲（${yearNum}）→ ${pPalaceStr}（${pName}${pNum}）\n`;
+            }
+        }
         
-        // 身宮(日干宮)：天盤干等於日干的宮位
-        const sgPalace = result.palaces.find(p => p.tianGan === result.siZhu.dayGan || p.tianGanExtra === result.siZhu.dayGan);
-        const sgWuXing = sgPalace ? WUXING_MAP[sgPalace.num] : '未知';
+    } else {
+        // 標準排盤匯出
+        md += `# 奇門遁甲排盤結果\n\n`;
+        md += `- **起局**：${yinYang}${juNum}局\n`;
+        md += `- **排盤系統**：${chartType}\n`;
+        md += `- **公曆時間**：${solar.year}年${solar.month}月${solar.day}日 ${pad(solar.hour)}:${pad(solar.minute)}\n`;
         
-        // 平台宮(時干宮)：天盤干等於時干的宮位 (若為甲，需轉為旬首干)
-        const XUN_HEAD_MAP = { '甲子': '戊', '甲戌': '己', '甲申': '庚', '甲午': '辛', '甲辰': '壬', '甲寅': '癸' };
-        const realHourGan = result.siZhu.hourGan === '甲' ? (XUN_HEAD_MAP[result.xunShou.replace('旬', '')] || '甲') : result.siZhu.hourGan;
-        const ptPalace = result.palaces.find(p => p.tianGan === realHourGan || p.tianGanExtra === realHourGan);
-        const ptWuXing = ptPalace ? WUXING_MAP[ptPalace.num] : '未知';
+        if (jieqiName && yuanName) {
+            md += `- **節氣**：${jieqiName} · ${yuanName}\n`;
+        }
 
-        // 整理輸出格式，例如: 命宮(時支宮)：1宮 坎 (五行:水，宮內天干:戊) 
-        // 根據使用者說的 "五行(甲乙丙丁戊己庚辛壬癸)"
-        const getGanStr = (pal) => pal ? (pal.tianGan || pal.diGan || '無') : '無';
+        md += `- **旬首**：${xunShou}\n`;
+        md += `- **空亡**：${kongWang || '無'}\n`;
+        md += `- **驛馬**：${yiMa || '無'}\n`;
         
-        md += `- **命宮 (時支宮)**：${mgPalace ? `${mgPalace.num}宮 ${mgPalace.name} (天干: ${getGanStr(mgPalace)}, 五行: ${mgWuXing})` : '未知'}\n`;
-        md += `- **身宮 (日干落宮)**：${sgPalace ? `${sgPalace.num}宮 ${sgPalace.name} (天干: ${getGanStr(sgPalace)}, 五行: ${sgWuXing})` : '未知'}\n`;
-        md += `- **平台宮 (時干落宮)**：${ptPalace ? `${ptPalace.num}宮 ${ptPalace.name} (天干: ${getGanStr(ptPalace)}, 五行: ${ptWuXing})` : '未知'}\n`;
-    }
+        if (zhiFuXing && zhiShiMen) {
+            md += `- **值符**：${zhiFuXing} / **值使**：${zhiShiMen}\n`;
+        }
+        
+        if (fuYinFanYin) {
+            md += `- **格局**：${fuYinFanYin}\n`;
+        }
 
-    if (jieqiName && yuanName) {
-        md += `- **節氣**：${jieqiName} · ${yuanName}\n`;
-    }
+        md += `\n## 九宮格詳解\n\n`;
 
-    md += `- **旬首**：${xunShou}\n`;
-    md += `- **空亡**：${kongWang || '無'}\n`;
-    md += `- **驛馬**：${yiMa || '無'}\n`;
-    
-    if (zhiFuXing && zhiShiMen) {
-        md += `- **值符**：${zhiFuXing} / **值使**：${zhiShiMen}\n`;
-    }
-    
-    if (fuYinFanYin) {
-        md += `- **格局**：${fuYinFanYin}\n`;
-    }
-
-    md += `\n## 九宮格詳解\n\n`;
-
-    // 照九宮順序 1~9 排列匯出
-    for (let i = 1; i <= 9; i++) {
-        md += exportPalace(result, i) + '\n';
+        for (let i = 1; i <= 9; i++) {
+            md += exportPalace(result, i) + '\n';
+        }
     }
 
     return md;

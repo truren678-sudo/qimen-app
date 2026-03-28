@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { BoardInfo } from './components/BoardInfo';
 import { NineGrid } from './components/NineGrid';
 import { QimenCalendarView } from './components/QimenCalendarView';
+import { SymbolKnowledgeModal } from './components/BehaviorFengShuiModal';
 import { calculateQimen } from './qimen';
 import { exportFullChart } from './utils/exportMarkdown';
 
@@ -22,6 +23,7 @@ function App() {
   const [mobileTab, setMobileTab] = useState('setting'); // 'setting' | 'result'
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [showSymbolModal, setShowSymbolModal] = useState(false);
 
   const [remark, setRemark] = useState('');
   const [savedRecords, setSavedRecords] = useState(() => {
@@ -132,6 +134,7 @@ function App() {
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-bold text-gray-700 tracking-wider">排盤結果</h2>
             {result && (
+              <>
               <button
                 onClick={() => {
                   const md = exportFullChart(result);
@@ -142,6 +145,14 @@ function App() {
               >
                 📋 全盤 MD
               </button>
+              <button
+                onClick={() => setShowSymbolModal(true)}
+                className="text-xs bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-600 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer"
+                title="查看神星門干符號象徵速查"
+              >
+                📖 符號象徵
+              </button>
+              </>
             )}
           </div>
           <span className="text-[10px] text-gray-400">{result?.chartType || '時家奇門遁甲'}</span>
@@ -214,6 +225,7 @@ function App() {
   );
 
   return (
+  <>
     <div className="flex flex-col h-screen bg-[#eef1f5] font-sans overflow-hidden w-full">
 
       {/* ── 頂部導覽列（奇門排盤 / 奇門曆） ── */}
@@ -284,6 +296,12 @@ function App() {
         </>
       )}
     </div>
+
+    {/* 符號象徵知識小卡 Modal */}
+    {showSymbolModal && (
+      <SymbolKnowledgeModal onClose={() => setShowSymbolModal(false)} />
+    )}
+  </>
   );
 }
 
