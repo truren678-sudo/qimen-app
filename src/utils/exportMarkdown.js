@@ -104,6 +104,7 @@ export function exportFullChart(result) {
     if (isMingPan) {
         md += `# 命主：奇門命盤（${gender}命）\n`;
         md += `- 出生：${solar.year}年${pad(solar.month)}月${pad(solar.day)}日 ${result.siZhu.hourZhi}時\n`;
+        md += `- 八字：${result.siZhu.yearGan}${result.siZhu.yearZhi} ${result.siZhu.monthGan}${result.siZhu.monthZhi} ${result.siZhu.dayGan}${result.siZhu.dayZhi} ${result.siZhu.hourGan}${result.siZhu.hourZhi}\n`;
         md += `- 局數：${yinYang}${juNum}局\n`;
 
         const WUXING_MAP = { 1: '水', 2: '土', 3: '木', 4: '木', 5: '土', 6: '金', 7: '金', 8: '土', 9: '火' };

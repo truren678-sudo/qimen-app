@@ -169,12 +169,7 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
                 </div>
             </div>
 
-            {/* 命盤專屬：顯示在宮位底部的流年歲數 */}
-            {isMingPan && palace.liuNianAges && palace.liuNianAges.length > 0 && (
-                <div className="absolute bottom-0.5 w-full flex justify-center text-[10px] text-gray-500 tracking-tighter pointer-events-none">
-                    流年: {palace.liuNianAges.join(', ')}
-                </div>
-            )}
+            {/* 命盤專屬：顯示在宮位底部的流年歲數 (已隱藏，僅在 md 中匯出) */}
 
             {/* 單宮拷貝按鈕 */}
             {onCopy && (
