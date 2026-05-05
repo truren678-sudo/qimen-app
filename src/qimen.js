@@ -442,8 +442,8 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         juNum = info.juNum; isYin = info.isYin; yuanName = info.yuanName; jieqiName = jqInfoOrig.jieqiName;
         targetGan = siZhu.monthGan; targetZhi = siZhu.monthZhi; doorTargetZhi = siZhu.monthZhi;
     } else if (chartType === '日家奇門') {
-        isDayQimen = true;
-        juNum = 0; yuanName = ''; jieqiName = jqInfoOrig.jieqiName;
+        juNum = jqInfoOrig.juNum; isYin = jqInfoOrig.isYin;
+        yuanName = ['上元', '中元', '下元'][jqInfoOrig.yuan]; jieqiName = jqInfoOrig.jieqiName;
         targetGan = siZhu.dayGan; targetZhi = siZhu.dayZhi; doorTargetZhi = siZhu.dayZhi;
     } else if (chartType === '陰盤奇門') {
         const yinJu = getYinPanJu(solar, siZhu);
