@@ -200,6 +200,7 @@ export function NineGrid({ result }) {
     const [selectedPalace, setSelectedPalace] = useState(null);
 
     const getOuterYinGan = (palNum) => {
+        if (isMingPan) return null;
         const p = result.palaces.find(x => x.num === palNum);
         if (!p || !p.yinGan) return null;
         return (
