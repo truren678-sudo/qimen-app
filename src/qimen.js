@@ -339,7 +339,7 @@ function buildShenPan(starPan, zhiFuXing, isYin) {
 }
 
 // ===== 奇門四害判定 =====
-function getHarmInfo(palaceNum, door, tianGan, diGan, tianGExtra, diGExtra) {
+function getHarmInfo(palaceNum, door, tianGan, diGan, tianGExtra, diGExtra, xunHeadGan) {
     let doorHarm = '';
     // 門迫
     const poMap = {
@@ -362,6 +362,12 @@ function getHarmInfo(palaceNum, door, tianGan, diGan, tianGExtra, diGExtra) {
         if (!g) return '';
         let isXing = xingMap[palaceNum] && xingMap[palaceNum].includes(g);
         let isMu = muMap[palaceNum] && muMap[palaceNum].includes(g);
+        
+        // 遁甲入墓：甲入墓於未(坤2宮)，代表甲的旬首干在坤2宮時也視為入墓
+        if (palaceNum === 2 && g === xunHeadGan) {
+            isMu = true;
+        }
+
         if (isXing && isMu) return '刑墓';
         if (isXing) return '刑';
         if (isMu) return '墓';
@@ -496,7 +502,7 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         const diGExtra = p.num === 2 ? (diPan[5] || '') : '';
         const tianGExtra = starPan[p.num] === '天芮' ? (diPan[5] || '') : '';
         const dr = doorPan[p.num] || '';
-        const harms = getHarmInfo(p.num, dr, tianG, diG, tianGExtra, diGExtra);
+        const harms = getHarmInfo(p.num, dr, tianG, diG, tianGExtra, diGExtra, xunInfo.xunHeadGan);
 
         let starToUse = starPan[p.num] || '';
         let tianGanToUse = tianG;
