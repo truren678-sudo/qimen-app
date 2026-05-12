@@ -241,7 +241,7 @@ export function NineGrid({ result }) {
                          <div className="flex-1"></div>
                          <div className="flex-1 flex justify-center items-center gap-2">
                              {getOuterYinGan(9)}
-                             {(!isMingPan && !isShiJia) && <span>▲ 南（巳 · 離 · 午）</span>}
+
                          </div>
                          <div className="flex-1"></div>
                     </div>
@@ -251,7 +251,7 @@ export function NineGrid({ result }) {
                     {/* 盤面左方 */}
                     <div className={`${isMingPan ? 'w-[40px]' : 'w-[42px]'} shrink-0 flex relative`}>
                         <div className="w-[20px] flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]" style={{ writingMode: 'vertical-rl' }}>
-                            {(!isMingPan && !isShiJia) && '東（卯）'}
+
                         </div>
                         <div className="flex-1 flex flex-col py-1">
                             <div className="flex-1 flex items-center justify-center">{getOuterYinGan(4)}</div>
@@ -287,7 +287,7 @@ export function NineGrid({ result }) {
                             <div className="flex-1 flex items-center justify-center">{getOuterYinGan(6)}</div>
                         </div>
                         <div className="w-[20px] flex items-center justify-center text-[12px] text-gray-500 tracking-[0.4em]" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                            {(!isMingPan && !isShiJia) && '西（酉）'}
+
                         </div>
                     </div>
                 </div>
@@ -298,7 +298,7 @@ export function NineGrid({ result }) {
                          <div className="flex-1"></div>
                          <div className="flex-1 flex justify-center items-center gap-2">
                              {getOuterYinGan(1)}
-                             {(!isMingPan && !isShiJia) && <span>▼ 北（亥 · 坎 · 子）</span>}
+
                          </div>
                          <div className="flex-1"></div>
                     </div>
