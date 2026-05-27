@@ -218,7 +218,8 @@ function getJieQiInfo(targetSolar) {
             let searchStart = curr.next(-15);
             for (let i = 0; i < 45; i++) {
                 let d = searchStart.next(i);
-                if (d.getLunar().getJieQi() === currentJqName) {
+                let jqName = d.getLunar().getJieQi();
+                if (jqName === currentJqName || (currentJqName === '芒種' && jqName === '芒种')) {
                     trueJqSolar = d;
                     break;
                 }
