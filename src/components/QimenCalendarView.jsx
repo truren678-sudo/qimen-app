@@ -235,9 +235,9 @@ export function QimenCalendarView() {
 
                 {/* 年月盤摘要 (僅顯示起算日之盤象) */}
                 <div className="bg-white border border-gray-200 rounded-sm p-4 mb-4 shadow-sm">
-                    {dailyDataList.length > 0 && renderSummary(dailyDataList[0].yearChart, '年盤 (首日)')}
+                    {dailyDataList.length > 0 && renderSummary(dailyDataList[0].yearChart, '年盤')}
                     <div className="h-px bg-gray-100 w-full my-3"></div>
-                    {dailyDataList.length > 0 && renderSummary(dailyDataList[0].monthChart, '月盤 (首日)')}
+                    {dailyDataList.length > 0 && renderSummary(dailyDataList[0].monthChart, '月盤')}
                 </div>
 
                 {/* 條件篩選面板 */}
