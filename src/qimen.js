@@ -566,7 +566,7 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         xunShou: xunName ? xunName + '旬' : '',
         kongWang: XUN_KONG[xunName] || '',
         yiMa: YI_MA_MAP[targetZhiStr] || '',
-        fuTou: xunInfo.xunHeadZhi || '',
+        fuTou: xunInfo.xunHeadGan || '',
         zhiFuXing: xunInfo.zhiFuXing || '',
         zhiShiMen: xunInfo.zhiShiMen || '',
         fuYinFanYin: fuYinFanYinStr,
