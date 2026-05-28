@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Lunar, Solar } from 'lunar-javascript';
 import { CHINA_PROVINCES, OVERSEAS_COUNTRIES, fmtOffset, calcSolarTimeCorrectionMinutes } from '../data/locationData';
+import { findSolarFromBazi } from '../utils/baziUtils';
 
 const YEARS = Array.from({ length: 150 }, (_, i) => 1900 + i + 1);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -8,6 +9,8 @@ const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 const LUNAR_MONTHS = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '臘'];
+const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+const DI_ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -58,6 +61,25 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
     // 農曆月份列表
     const lunarMonthList = useMemo(() => getLunarMonthsOfYear(lunarYear), [lunarYear]);
     const maxLunarDay = useMemo(() => getLunarDaysInMonth(lunarYear, lunarMonth, lunarIsLeap), [lunarYear, lunarMonth, lunarIsLeap]);
+
+    // ── 四柱輸入狀態
+    const [baziYg, setBaziYg] = useState('甲');
+    const [baziYz, setBaziYz] = useState('子');
+    const [baziMg, setBaziMg] = useState('甲');
+    const [baziMz, setBaziMz] = useState('子');
+    const [baziDg, setBaziDg] = useState('甲');
+    const [baziDz, setBaziDz] = useState('子');
+    const [baziHg, setBaziHg] = useState('甲');
+    const [baziHz, setBaziHz] = useState('子');
+
+    const initBaziFromSolar = () => {
+        const d = Solar.fromYmdHms(year, month, day, hour, minute, 0).getLunar();
+        const bazi = d.getEightChar();
+        setBaziYg(bazi.getYearGan()); setBaziYz(bazi.getYearZhi());
+        setBaziMg(bazi.getMonthGan()); setBaziMz(bazi.getMonthZhi());
+        setBaziDg(bazi.getDayGan()); setBaziDz(bazi.getDayZhi());
+        setBaziHg(bazi.getTimeGan()); setBaziHz(bazi.getTimeZhi());
+    };
 
     // ── 夏令時（DST）
     const [isDst, setIsDst] = useState(false);
@@ -166,6 +188,29 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
             if (!converted) return;
             baseParams = converted;
             setTimeParams(converted);
+        } else if (calMode === 'bazi') {
+            const results = findSolarFromBazi(baziYg+baziYz, baziMg+baziMz, baziDg+baziDz, baziHg+baziHz);
+            if (results.length === 0) {
+                alert('找不到符合此八字的西曆日期（搜尋範圍：過去 100 年至未來 20 年）');
+                return;
+            }
+            
+            let chosenDate = results[0];
+            if (results.length > 1) {
+                const years = results.map(d => d.getFullYear());
+                const userInput = window.prompt(`找到多個相符的年份：\n${years.join(', ')}\n請輸入您要排盤的西元年份：`, years[years.length - 1]);
+                if (userInput && years.includes(Number(userInput))) {
+                    chosenDate = results.find(d => d.getFullYear() === Number(userInput));
+                } else if (userInput) {
+                    alert('輸入的年份不在列表中，將使用最近的年份：' + years[years.length - 1]);
+                    chosenDate = results[results.length - 1];
+                } else {
+                    return; // 使用者按取消
+                }
+            }
+            const converted = { year: chosenDate.getFullYear(), month: chosenDate.getMonth() + 1, day: chosenDate.getDate(), hour: chosenDate.getHours(), minute: chosenDate.getMinutes() };
+            baseParams = converted;
+            setTimeParams(converted);
         }
         onCalculate(computeFinalParams(baseParams));
     };
@@ -186,14 +231,17 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
             {/* ── 設定時間 ── */}
             <div className="flex items-center justify-between mb-2">
                 <h2 className="text-sm font-bold text-gray-700">設定時間：</h2>
-                {/* 公曆/農曆切換（命盤時才顯示） */}
+                {/* 公曆/農曆/四柱切換（命盤時才顯示） */}
                 {isMingPan && (
                     <div className="flex bg-gray-100 rounded-full p-0.5 border border-gray-200">
-                        {['solar', 'lunar'].map(mode => (
+                        {['solar', 'lunar', 'bazi'].map(mode => (
                             <button key={mode}
-                                onClick={() => setCalMode(mode)}
+                                onClick={() => {
+                                    setCalMode(mode);
+                                    if (mode === 'bazi') initBaziFromSolar();
+                                }}
                                 className={`px-3 py-0.5 rounded-full text-xs font-bold transition-colors ${calMode === mode ? 'bg-white text-[#8b5a7a] shadow-sm' : 'text-gray-500'}`}>
-                                {mode === 'solar' ? '公曆' : '農曆'}
+                                {mode === 'solar' ? '公曆' : mode === 'lunar' ? '農曆' : '四柱'}
                             </button>
                         ))}
                     </div>
@@ -272,6 +320,41 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                         </select>
                     </div>
                     <p className="text-[11px] text-gray-400 text-center">農曆輸入</p>
+                </div>
+            )}
+
+            {/* 四柱輸入 */}
+            {calMode === 'bazi' && (
+                <div className="flex flex-col gap-2 mb-4">
+                    <div className="flex gap-1.5">
+                        <select value={baziYg} onChange={e => setBaziYg(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
+                            {TIAN_GAN.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <select value={baziYz} onChange={e => setBaziYz(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
+                            {DI_ZHI.map(z => <option key={z} value={z}>{z}年</option>)}
+                        </select>
+                        <select value={baziMg} onChange={e => setBaziMg(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
+                            {TIAN_GAN.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <select value={baziMz} onChange={e => setBaziMz(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
+                            {DI_ZHI.map(z => <option key={z} value={z}>{z}月</option>)}
+                        </select>
+                    </div>
+                    <div className="flex gap-1.5">
+                        <select value={baziDg} onChange={e => setBaziDg(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
+                            {TIAN_GAN.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <select value={baziDz} onChange={e => setBaziDz(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
+                            {DI_ZHI.map(z => <option key={z} value={z}>{z}日</option>)}
+                        </select>
+                        <select value={baziHg} onChange={e => setBaziHg(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
+                            {TIAN_GAN.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <select value={baziHz} onChange={e => setBaziHz(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
+                            {DI_ZHI.map(z => <option key={z} value={z}>{z}時</option>)}
+                        </select>
+                    </div>
+                    <p className="text-[11px] text-gray-400 text-center">四柱輸入</p>
                 </div>
             )}
 
