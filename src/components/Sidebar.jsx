@@ -71,6 +71,33 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
     const [baziDz, setBaziDz] = useState('子');
     const [baziHg, setBaziHg] = useState('甲');
     const [baziHz, setBaziHz] = useState('子');
+    const [baziPickerActive, setBaziPickerActive] = useState(null);
+
+    const handleBaziSelect = (val) => {
+        if (!baziPickerActive) return;
+        const { p, t } = baziPickerActive;
+        
+        let newG = p==='Y' ? baziYg : p==='M' ? baziMg : p==='D' ? baziDg : baziHg;
+        let newZ = p==='Y' ? baziYz : p==='M' ? baziMz : p==='D' ? baziDz : baziHz;
+
+        if (t === 'g') {
+            newG = val;
+            const isYang = TIAN_GAN.indexOf(val) % 2 === 0;
+            const currZIdx = DI_ZHI.indexOf(newZ);
+            const isZYang = currZIdx % 2 === 0;
+            if (isYang !== isZYang) {
+                newZ = DI_ZHI[(currZIdx + 1) % 12];
+            }
+        } else {
+            newZ = val;
+        }
+
+        if (p === 'Y') { setBaziYg(newG); setBaziYz(newZ); }
+        if (p === 'M') { setBaziMg(newG); setBaziMz(newZ); }
+        if (p === 'D') { setBaziDg(newG); setBaziDz(newZ); }
+        if (p === 'H') { setBaziHg(newG); setBaziHz(newZ); }
+        setBaziPickerActive(null);
+    };
 
     const initBaziFromSolar = () => {
         const d = Solar.fromYmdHms(year, month, day, hour, minute, 0).getLunar();
@@ -325,36 +352,54 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
 
             {/* 四柱輸入 */}
             {calMode === 'bazi' && (
-                <div className="flex flex-col gap-2 mb-4">
-                    <div className="flex gap-1.5">
-                        <select value={baziYg} onChange={e => setBaziYg(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
-                            {TIAN_GAN.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                        <select value={baziYz} onChange={e => setBaziYz(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
-                            {DI_ZHI.map(z => <option key={z} value={z}>{z}年</option>)}
-                        </select>
-                        <select value={baziMg} onChange={e => setBaziMg(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
-                            {TIAN_GAN.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                        <select value={baziMz} onChange={e => setBaziMz(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
-                            {DI_ZHI.map(z => <option key={z} value={z}>{z}月</option>)}
-                        </select>
+                <div className="relative mb-4 pt-2 pb-2">
+                    {/* 背景遮罩 (選單開啟時防誤觸) */}
+                    {baziPickerActive && (
+                        <div className="fixed inset-0 z-30" onClick={() => setBaziPickerActive(null)} />
+                    )}
+
+                    <div className="flex justify-around items-center mb-6">
+                        {['Y', 'M', 'D', 'H'].map((p, idx) => {
+                            const label = ['年柱', '月柱', '日柱', '時柱'][idx];
+                            const currG = p==='Y' ? baziYg : p==='M' ? baziMg : p==='D' ? baziDg : baziHg;
+                            const currZ = p==='Y' ? baziYz : p==='M' ? baziMz : p==='D' ? baziDz : baziHz;
+                            return (
+                                <div key={p} className="flex flex-col items-center gap-3">
+                                    <span className="text-sm text-gray-600 font-medium tracking-widest">{label}</span>
+                                    <button onClick={() => setBaziPickerActive({ p, t: 'g' })} className="w-12 h-12 rounded-full bg-[#9f9f9f] text-white text-xl font-medium flex items-center justify-center hover:bg-[#858585] transition-colors shadow-sm">{currG}</button>
+                                    <button onClick={() => setBaziPickerActive({ p, t: 'z' })} className="w-12 h-12 rounded-full bg-[#9f9f9f] text-white text-xl font-medium flex items-center justify-center hover:bg-[#858585] transition-colors shadow-sm">{currZ}</button>
+                                </div>
+                            );
+                        })}
                     </div>
-                    <div className="flex gap-1.5">
-                        <select value={baziDg} onChange={e => setBaziDg(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
-                            {TIAN_GAN.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                        <select value={baziDz} onChange={e => setBaziDz(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
-                            {DI_ZHI.map(z => <option key={z} value={z}>{z}日</option>)}
-                        </select>
-                        <select value={baziHg} onChange={e => setBaziHg(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
-                            {TIAN_GAN.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                        <select value={baziHz} onChange={e => setBaziHz(e.target.value)} className="flex-1 h-8 text-sm text-[#c07353] font-medium border-2 border-orange-200 rounded-md px-1 focus:outline-none">
-                            {DI_ZHI.map(z => <option key={z} value={z}>{z}時</option>)}
-                        </select>
-                    </div>
-                    <p className="text-[11px] text-gray-400 text-center">四柱輸入</p>
+                    <p className="text-sm text-gray-500 text-center tracking-widest">查找範圍：1801~2099年</p>
+                    
+                    {baziPickerActive && (() => {
+                        const { p, t } = baziPickerActive;
+                        let options = [];
+                        if (t === 'g') {
+                            options = TIAN_GAN;
+                        } else {
+                            const currG = p==='Y' ? baziYg : p==='M' ? baziMg : p==='D' ? baziDg : baziHg;
+                            const isYang = TIAN_GAN.indexOf(currG) % 2 === 0;
+                            options = DI_ZHI.filter((_, idx) => (idx % 2 === 0) === isYang);
+                        }
+                        return (
+                            <div className="absolute z-40 bg-white border border-gray-200 shadow-xl rounded-xl p-4 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ width: t === 'g' ? '280px' : '320px' }}>
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="text-sm font-bold text-gray-700">請選擇{t === 'g' ? '天干' : '地支'}</span>
+                                    <button onClick={() => setBaziPickerActive(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+                                </div>
+                                <div className={`grid gap-3 ${t === 'g' ? 'grid-cols-5' : 'grid-cols-6'}`}>
+                                    {options.map(opt => (
+                                        <button key={opt} onClick={() => handleBaziSelect(opt)} className="w-10 h-10 mx-auto rounded-full bg-gray-50 text-gray-700 text-lg hover:bg-gray-200 font-medium transition-colors border border-gray-100 flex items-center justify-center">
+                                            {opt}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 

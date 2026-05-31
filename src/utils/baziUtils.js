@@ -12,8 +12,8 @@ export function findSolarFromBazi(yearGz, monthGz, dayGz, hourGz) {
     let results = [];
     const currentYear = new Date().getFullYear();
     // 搜尋過去 ~100 年到未來 ~20 年 (涵蓋兩個甲子)
-    const startYear = currentYear - 100;
-    const endYear = currentYear + 20;
+    const startYear = 1801;
+    const endYear = 2099;
 
     for (let y = startYear; y <= endYear; y++) {
         let testLunarYear = Lunar.fromYmd(y, 1, 1);
