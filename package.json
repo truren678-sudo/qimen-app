@@ -1,9 +1,23 @@
 {
   "name": "qimen-app",
-  "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "A professional Qimen Dunjia (奇門遁甲) chart calculation system built with React.",
+  "author": "truren678",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/truren678-sudo/qimen-app.git"
+  },
+  "keywords": [
+    "qimen",
+    "qimen-dunjia",
+    "chinese-astrology",
+    "bazi",
+    "lunar-calendar"
+  ],
   "type": "module",
   "scripts": {
+    "test": "vitest run",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -32,6 +46,7 @@
     "globals": "^16.5.0",
     "tailwindcss": "^4.2.1",
     "vite": "^7.3.1",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^3.0.0"
   }
 }

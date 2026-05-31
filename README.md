@@ -1,16 +1,49 @@
-# React + Vite
+# Qimen Dunjia App (奇門遁甲排盤系統)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-19.2.0-blue.svg)
+![Vite](https://img.shields.io/badge/Vite-7.3.1-646CFF.svg)
 
-Currently, two official plugins are available:
+A professional, open-source Qimen Dunjia (奇門遁甲) chart calculation system built with modern web technologies. This project is designed to provide accurate Chinese astrological calculations, including Solar/Lunar calendar conversions, Bazi (Four Pillars of Destiny) reverse calculation, and advanced Qimen charting.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+- **Comprehensive Charting**: Supports multiple Qimen charting methods including Shijia (時家), Zhuanpan (轉盤), Feipan (飛盤), and Mingpan (命盤).
+- **Time Conversions**: Accurate conversions between Solar and Lunar calendars, with support for True Solar Time (真太陽時) adjustments based on geographic location.
+- **Bazi Reverse Calculation**: Input the Four Pillars (Bazi) to dynamically reverse-calculate and find the corresponding Gregorian dates (spanning from 1801 to 2099).
+- **Smart Validation**: Intuitive UI with smart constraints (e.g., matching Yang Heavenly Stems with Yang Earthly Branches).
+- **PWA Ready**: Built as a Progressive Web App for seamless desktop and mobile experiences.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Setup & Installation
 
-## Expanding the ESLint configuration
+To run this project locally, make sure you have Node.js installed, then:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+# 1. Clone the repository
+git clone https://github.com/truren678-sudo/qimen-app.git
+
+# 2. Navigate to the project directory
+cd qimen-app
+
+# 3. Install dependencies
+npm install
+
+# 4. Start the development server
+npm run dev
+```
+
+## Available Scripts
+
+- `npm run dev`: Starts the local development server.
+- `npm run build`: Builds the app for production to the `dist` folder.
+- `npm run preview`: Locally previews the production build.
+- `npm run lint`: Runs ESLint to check for code quality issues.
+- `npm run test`: Runs the automated test suite using Vitest.
+
+## Contributing
+
+We welcome contributions from the open-source community! If you'd like to help improve the project, please read our [Contributing Guidelines](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md) before submitting pull requests.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

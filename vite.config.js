@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { fileURLToPath, URL } from 'node:url'
+
+const rootPath = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   plugins: [
@@ -35,4 +38,12 @@ export default defineConfig({
     })
   ],
   base: '/qimen-app/',
+  build: {
+    rollupOptions: {
+      input: {
+        main: `${rootPath}index.html`,
+        userApp: `${rootPath}user-app.html`,
+      },
+    },
+  },
 })
