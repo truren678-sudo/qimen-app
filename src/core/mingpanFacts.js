@@ -1,3 +1,5 @@
+import { getCivilYear } from '../utils/civilDateTime.js';
+
 const PALACE_ELEMENTS = {
     1: '水',
     2: '土',
@@ -138,9 +140,9 @@ function getEffectiveHourStem(result) {
     return XUN_HIDDEN_GAN[xunName] || '甲';
 }
 
-function getNominalAge(result, asOfDate) {
-    const currentYear = asOfDate instanceof Date ? asOfDate.getFullYear() : new Date(asOfDate || Date.now()).getFullYear();
-    return currentYear - result.solar.year + 1;
+function getNominalAge(result, asOfDate, birthDate) {
+    const currentYear = getCivilYear(asOfDate);
+    return currentYear - (birthDate?.year || result.solar.year) + 1;
 }
 
 function buildPalaceFact(result, palace, kongWangPalaces, maPalace) {
@@ -191,7 +193,7 @@ export function buildMingPanFacts(result, options = {}) {
     const kongWangPalaces = getKongWangPalaces(result.kongWang);
     const maPalace = DZ_PALACE[result.yiMa] || null;
     const palaceFacts = result.palaces.map(palace => buildPalaceFact(result, palace, kongWangPalaces, maPalace));
-    const nominalAge = getNominalAge(result, options.asOfDate);
+    const nominalAge = getNominalAge(result, options.asOfDate, options.birthDate);
     const effectiveHourStem = getEffectiveHourStem(result);
 
     const mingGong = findPalaceByPersonnel(palaceFacts, '命宮');
@@ -213,6 +215,7 @@ export function buildMingPanFacts(result, options = {}) {
         profile: {
             gender: result.gender || '',
             solar: result.solar,
+            civilBirthDate: options.birthDate || result.solar,
             lunar: result.lunar,
             siZhu: result.siZhu,
             nominalAge,

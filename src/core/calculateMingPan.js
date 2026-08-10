@@ -1,6 +1,13 @@
-import { Lunar } from 'lunar-javascript';
 import { calculateQimen } from '../qimen.js';
 import { calcSolarTimeCorrectionMinutes } from '../data/locationData.js';
+import {
+    addCivilMinutes,
+    compareCivilDates,
+    getCivilDateParts,
+    isValidCivilTime,
+    isValidGregorianDate,
+} from '../utils/civilDateTime.js';
+import { isValidLunarDate, lunarToSolarParts } from '../utils/lunarDate.js';
 import { buildMingPanFacts } from './mingpanFacts.js';
 
 function toInt(value, fallback = 0) {
@@ -21,34 +28,17 @@ function extractBirthParts(input) {
     };
 }
 
-function assertValidParts(parts) {
-    const { year, month, day, hour, minute } = parts;
-    if (!year || month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+function assertValidGregorianParts(parts) {
+    if (!isValidGregorianDate(parts) || !isValidCivilTime(parts)) {
         throw new Error('Invalid birth date or time.');
     }
 }
 
-function addMinutes(parts, minutes) {
-    const d = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute + minutes);
-    return {
-        year: d.getFullYear(),
-        month: d.getMonth() + 1,
-        day: d.getDate(),
-        hour: d.getHours(),
-        minute: d.getMinutes(),
-    };
-}
-
 function convertLunarToSolar(parts, isLeapMonth = false) {
-    const lunarMonth = isLeapMonth ? -parts.month : parts.month;
-    const solar = Lunar.fromYmd(parts.year, lunarMonth, parts.day).getSolar();
-    return {
-        year: solar.getYear(),
-        month: solar.getMonth(),
-        day: solar.getDay(),
-        hour: parts.hour,
-        minute: parts.minute,
-    };
+    if (!isValidCivilTime(parts) || !isValidLunarDate(parts, isLeapMonth)) {
+        throw new Error('Invalid lunar birth date or time.');
+    }
+    return lunarToSolarParts(parts, isLeapMonth);
 }
 
 function convertOverseasToChinaTime(parts, location, isDst) {
@@ -61,17 +51,7 @@ function convertOverseasToChinaTime(parts, location, isDst) {
         throw new Error('Overseas birth location requires a valid UTC offset.');
     }
 
-    const chinaOffset = 8;
-    const d = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour - effectiveOffset, parts.minute));
-    d.setUTCHours(d.getUTCHours() + chinaOffset);
-
-    return {
-        year: d.getUTCFullYear(),
-        month: d.getUTCMonth() + 1,
-        day: d.getUTCDate(),
-        hour: d.getUTCHours(),
-        minute: d.getUTCMinutes(),
-    };
+    return addCivilMinutes(parts, Math.round((8 - effectiveOffset) * 60));
 }
 
 function getChinaCity(location) {
@@ -89,13 +69,18 @@ export function normalizeMingPanBirthTime(input = {}) {
     const adjustments = [];
 
     let params = extractBirthParts(input);
-    assertValidParts(params);
 
     if (calendarType === 'lunar') {
         const before = params;
         params = convertLunarToSolar(params, Boolean(input.isLeapMonth || input.lunarIsLeap));
         adjustments.push({ type: 'lunar-to-solar', before, after: params });
+    } else {
+        assertValidGregorianParts(params);
     }
+
+    // 年齡與「是否為未來出生」以出生地的公曆民用日期為準；
+    // 後續 UTC+8、夏令與經度修正只影響排盤時刻。
+    const civilBirthDate = { year: params.year, month: params.month, day: params.day };
 
     if (location?.type === 'overseas' || location?.country || location?.offset != null) {
         const before = params;
@@ -105,7 +90,7 @@ export function normalizeMingPanBirthTime(input = {}) {
 
     if (isDst && (!location || location.type === 'china' || location.city || location.lng != null)) {
         const before = params;
-        params = addMinutes(params, -60);
+        params = addCivilMinutes(params, -60);
         adjustments.push({ type: 'china-dst-minus-60-minutes', before, after: params });
     }
 
@@ -114,7 +99,7 @@ export function normalizeMingPanBirthTime(input = {}) {
         const minutes = calcSolarTimeCorrectionMinutes(chinaCity.lng);
         if (minutes !== 0) {
             const before = params;
-            params = addMinutes(params, minutes);
+            params = addCivilMinutes(params, minutes);
             adjustments.push({ type: 'true-solar-time', minutes, before, after: params });
         }
     }
@@ -126,6 +111,7 @@ export function normalizeMingPanBirthTime(input = {}) {
         isDst,
         useTrueSolarTime,
         location,
+        civilBirthDate,
         adjustments,
     };
 }
@@ -134,10 +120,17 @@ export function calculateMingPan(input = {}, options = {}) {
     const normalizedBirth = normalizeMingPanBirthTime(input);
     const { year, month, day, hour, minute } = normalizedBirth.normalized;
     const gender = input.gender || options.gender || '男';
+    const asOfDate = options.asOfDate || input.asOfDate;
+    const asOfParts = getCivilDateParts(asOfDate);
+    if (compareCivilDates(normalizedBirth.civilBirthDate, asOfParts) > 0) {
+        throw new Error('Birth date cannot be later than the calculation date.');
+    }
+    const requestedNominalAge = asOfParts.year - normalizedBirth.civilBirthDate.year + 1;
 
     const result = calculateQimen(year, month, day, hour, minute, {
         chartType: '命盤',
         gender,
+        liuNianEndAge: requestedNominalAge,
     });
 
     if (!result) {
@@ -145,7 +138,8 @@ export function calculateMingPan(input = {}, options = {}) {
     }
 
     const facts = buildMingPanFacts(result, {
-        asOfDate: options.asOfDate || input.asOfDate,
+        asOfDate,
+        birthDate: normalizedBirth.civilBirthDate,
     });
 
     return {

@@ -13,7 +13,7 @@ export function BoardInfo({ result }) {
     if (!result) return null;
 
     const { solar, lunar, siZhu,
-        jieqiName, yuanName, juNum, isYin, yinYang,
+        jieqiName, yuanName, juNum, yinYang,
         xunShou, kongWang, yiMa, fuTou, zhiFuXing, zhiShiMen, chartType, gender, fuYinFanYin } = result;
 
     const isMingPan = chartType === '命盤';

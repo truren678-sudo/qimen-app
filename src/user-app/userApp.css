@@ -3,6 +3,13 @@ body {
   background: #eef2f3;
 }
 
+.mp-app,
+.mp-app *,
+.mp-app *::before,
+.mp-app *::after {
+  box-sizing: border-box;
+}
+
 button,
 input,
 select {
@@ -10,6 +17,8 @@ select {
 }
 
 .mp-app {
+  width: 100%;
+  min-width: 0;
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(300px, 360px) 1fr;
@@ -227,6 +236,7 @@ select {
 }
 
 .mp-result {
+  min-width: 0;
   display: grid;
   gap: 18px;
 }
@@ -249,6 +259,13 @@ select {
 .mp-hero-panel .mp-kicker,
 .mp-hero-panel p {
   color: rgba(255, 255, 255, 0.74);
+}
+
+.mp-as-of-date {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.66);
+  font-weight: 700;
 }
 
 .mp-hero-panel h2 {
@@ -276,6 +293,17 @@ select {
 .mp-age-chip small {
   color: rgba(255, 255, 255, 0.72);
   font-weight: 800;
+}
+
+.mp-limit-notice {
+  padding: 13px 16px;
+  border: 1px solid #d9b87a;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #674815;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
 }
 
 .mp-summary-band {
@@ -312,6 +340,7 @@ select {
 }
 
 .mp-layout {
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(420px, 0.95fr) minmax(360px, 1.05fr);
   gap: 18px;
@@ -320,6 +349,7 @@ select {
 .mp-chart-panel,
 .mp-reading-panel,
 .mp-palace-list {
+  min-width: 0;
   padding: 18px;
 }
 
@@ -331,6 +361,7 @@ select {
 }
 
 .mp-mini-cell {
+  min-width: 0;
   min-height: 132px;
   border: 1px solid #d5ddda;
   border-radius: 6px;
@@ -382,6 +413,7 @@ select {
 }
 
 .mp-tabs {
+  max-width: 100%;
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -480,6 +512,7 @@ select {
 
   .mp-hero-panel h2 {
     font-size: 34px;
+    overflow-wrap: anywhere;
   }
 
   .mp-mini-grid {

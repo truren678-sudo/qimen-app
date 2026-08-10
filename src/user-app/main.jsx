@@ -1,17 +1,20 @@
 /* eslint-disable react-refresh/only-export-components */
 import { StrictMode, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { LunarYear } from 'lunar-javascript';
 import '../index.css';
 import './userApp.css';
 import { CHINA_PROVINCES, OVERSEAS_COUNTRIES } from '../data/locationData.js';
 import { calculateMingPan } from '../core/calculateMingPan.js';
 import { generateMingPanReading } from '../interpreter/generateMingPanReading.js';
+import { daysInGregorianMonth } from '../utils/civilDateTime.js';
 
-const YEARS = Array.from({ length: 101 }, (_, i) => 1930 + i);
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: CURRENT_YEAR - 1930 + 1 }, (_, i) => 1930 + i);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
-const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+const LUNAR_MONTH_LABELS = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '臘'];
 
 const SECTION_LABEL = {
   overview: '總覽',
@@ -25,6 +28,73 @@ const SECTION_LABEL = {
 
 function pad(value) {
   return String(value).padStart(2, '0');
+}
+
+function formatCivilDate(value) {
+  if (!value) return '';
+  if (Number.isInteger(value.year) && Number.isInteger(value.month) && Number.isInteger(value.day)) {
+    return `${value.year}/${pad(value.month)}/${pad(value.day)}`;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
+}
+
+function getLunarMonthOptions(year) {
+  try {
+    return LunarYear.fromYear(year).getMonthsInYear().map(lunarMonth => {
+      const signedMonth = lunarMonth.getMonth();
+      const month = Math.abs(signedMonth);
+      const isLeapMonth = signedMonth < 0;
+
+      return {
+        month,
+        isLeapMonth,
+        days: lunarMonth.getDayCount(),
+        label: `${isLeapMonth ? '閏' : ''}${LUNAR_MONTH_LABELS[month - 1]}月`,
+      };
+    });
+  } catch {
+    return MONTHS.map(month => ({
+      month,
+      isLeapMonth: false,
+      days: 30,
+      label: `${LUNAR_MONTH_LABELS[month - 1]}月`,
+    }));
+  }
+}
+
+function normalizeDateSelection(form) {
+  if (form.calendarType === 'lunar') {
+    const lunarMonths = getLunarMonthOptions(form.year);
+    const selectedMonth = lunarMonths.find(item => (
+      item.month === form.month && item.isLeapMonth === Boolean(form.isLeapMonth)
+    )) || lunarMonths.find(item => item.month === form.month && !item.isLeapMonth) || lunarMonths[0];
+
+    return {
+      ...form,
+      month: selectedMonth.month,
+      isLeapMonth: selectedMonth.isLeapMonth,
+      day: Math.min(form.day, selectedMonth.days),
+    };
+  }
+
+  return {
+    ...form,
+    isLeapMonth: false,
+    day: Math.min(form.day, daysInGregorianMonth(form.year, form.month)),
+  };
+}
+
+function getUniquePalaceReadings(palaceReadings) {
+  const readingsByPalace = new Map();
+  palaceReadings.forEach(item => {
+    if (!readingsByPalace.has(item.palace.num)) {
+      readingsByPalace.set(item.palace.num, item);
+    }
+  });
+  return Array.from(readingsByPalace.values());
 }
 
 function Field({ label, children }) {
@@ -46,7 +116,7 @@ function Select({ value, onChange, children }) {
 
 function Toggle({ checked, onChange, label }) {
   return (
-    <button type="button" className={`mp-toggle ${checked ? 'is-on' : ''}`} onClick={() => onChange(!checked)}>
+    <button type="button" aria-pressed={checked} className={`mp-toggle ${checked ? 'is-on' : ''}`} onClick={() => onChange(!checked)}>
       <span className="mp-toggle-track"><span /></span>
       <span>{label}</span>
     </button>
@@ -56,6 +126,14 @@ function Toggle({ checked, onChange, label }) {
 function BirthPanel({ form, setForm, onGenerate }) {
   const selectedProvince = CHINA_PROVINCES.find(item => item.province === form.province) || CHINA_PROVINCES[0];
   const cities = selectedProvince?.cities || [];
+  const lunarMonthOptions = useMemo(() => getLunarMonthOptions(form.year), [form.year]);
+  const selectedLunarMonth = lunarMonthOptions.find(item => (
+    item.month === form.month && item.isLeapMonth === Boolean(form.isLeapMonth)
+  ));
+  const dayCount = form.calendarType === 'lunar'
+    ? (selectedLunarMonth?.days || 30)
+    : daysInGregorianMonth(form.year, form.month);
+  const days = useMemo(() => Array.from({ length: dayCount }, (_, index) => index + 1), [dayCount]);
   const overseasRegions = useMemo(() => {
     const groups = {};
     OVERSEAS_COUNTRIES.forEach(country => {
@@ -66,6 +144,7 @@ function BirthPanel({ form, setForm, onGenerate }) {
   }, []);
 
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+  const setDate = patch => setForm(prev => normalizeDateSelection({ ...prev, ...patch }));
 
   return (
     <aside className="mp-panel mp-birth-panel">
@@ -82,24 +161,40 @@ function BirthPanel({ form, setForm, onGenerate }) {
       </Field>
 
       <div className="mp-segment" role="group" aria-label="曆法">
-        <button className={form.calendarType === 'solar' ? 'is-active' : ''} onClick={() => set('calendarType', 'solar')} type="button">公曆</button>
-        <button className={form.calendarType === 'lunar' ? 'is-active' : ''} onClick={() => set('calendarType', 'lunar')} type="button">農曆</button>
+        <button aria-pressed={form.calendarType === 'solar'} className={form.calendarType === 'solar' ? 'is-active' : ''} onClick={() => setDate({ calendarType: 'solar', isLeapMonth: false })} type="button">公曆</button>
+        <button aria-pressed={form.calendarType === 'lunar'} className={form.calendarType === 'lunar' ? 'is-active' : ''} onClick={() => setDate({ calendarType: 'lunar' })} type="button">農曆</button>
       </div>
 
       <div className="mp-grid-3">
         <Field label="年">
-          <Select value={form.year} onChange={value => set('year', Number(value))}>
+          <Select value={form.year} onChange={value => setDate({ year: Number(value) })}>
             {YEARS.map(year => <option key={year} value={year}>{year}</option>)}
           </Select>
         </Field>
         <Field label="月">
-          <Select value={form.month} onChange={value => set('month', Number(value))}>
-            {MONTHS.map(month => <option key={month} value={month}>{month}</option>)}
+          <Select
+            value={form.calendarType === 'lunar' ? `${form.month}:${form.isLeapMonth ? 'leap' : 'regular'}` : form.month}
+            onChange={value => {
+              if (form.calendarType === 'lunar') {
+                const [month, monthType] = value.split(':');
+                setDate({ month: Number(month), isLeapMonth: monthType === 'leap' });
+                return;
+              }
+              setDate({ month: Number(value), isLeapMonth: false });
+            }}
+          >
+            {form.calendarType === 'lunar'
+              ? lunarMonthOptions.map(item => (
+                  <option key={`${item.month}:${item.isLeapMonth}`} value={`${item.month}:${item.isLeapMonth ? 'leap' : 'regular'}`}>
+                    {item.label}
+                  </option>
+                ))
+              : MONTHS.map(month => <option key={month} value={month}>{month}</option>)}
           </Select>
         </Field>
         <Field label="日">
           <Select value={form.day} onChange={value => set('day', Number(value))}>
-            {DAYS.map(day => <option key={day} value={day}>{day}</option>)}
+            {days.map(day => <option key={day} value={day}>{day}</option>)}
           </Select>
         </Field>
       </div>
@@ -118,13 +213,13 @@ function BirthPanel({ form, setForm, onGenerate }) {
       </div>
 
       <div className="mp-segment" role="group" aria-label="性別">
-        <button className={form.gender === '男' ? 'is-active' : ''} onClick={() => set('gender', '男')} type="button">男命</button>
-        <button className={form.gender === '女' ? 'is-active' : ''} onClick={() => set('gender', '女')} type="button">女命</button>
+        <button aria-pressed={form.gender === '男'} className={form.gender === '男' ? 'is-active' : ''} onClick={() => set('gender', '男')} type="button">男命</button>
+        <button aria-pressed={form.gender === '女'} className={form.gender === '女' ? 'is-active' : ''} onClick={() => set('gender', '女')} type="button">女命</button>
       </div>
 
       <div className="mp-segment" role="group" aria-label="出生地">
-        <button className={form.locationType === 'china' ? 'is-active' : ''} onClick={() => set('locationType', 'china')} type="button">國內</button>
-        <button className={form.locationType === 'overseas' ? 'is-active' : ''} onClick={() => set('locationType', 'overseas')} type="button">海外</button>
+        <button aria-pressed={form.locationType === 'china'} className={form.locationType === 'china' ? 'is-active' : ''} onClick={() => set('locationType', 'china')} type="button">國內</button>
+        <button aria-pressed={form.locationType === 'overseas'} className={form.locationType === 'overseas' ? 'is-active' : ''} onClick={() => set('locationType', 'overseas')} type="button">海外</button>
       </div>
 
       {form.locationType === 'china' ? (
@@ -153,7 +248,9 @@ function BirthPanel({ form, setForm, onGenerate }) {
       )}
 
       <div className="mp-toggles">
-        <Toggle checked={form.useTrueSolarTime} onChange={value => set('useTrueSolarTime', value)} label="真太陽時" />
+        {form.locationType === 'china' && (
+          <Toggle checked={form.useTrueSolarTime} onChange={value => set('useTrueSolarTime', value)} label="經度時間修正" />
+        )}
         <Toggle checked={form.isDst} onChange={value => set('isDst', value)} label="夏令時" />
       </div>
 
@@ -186,7 +283,7 @@ function SectionTabs({ sections, active, setActive }) {
   return (
     <div className="mp-tabs">
       {sections.map(section => (
-        <button key={section.id} className={active === section.id ? 'is-active' : ''} type="button" onClick={() => setActive(section.id)}>
+        <button key={section.id} aria-pressed={active === section.id} className={active === section.id ? 'is-active' : ''} type="button" onClick={() => setActive(section.id)}>
           {SECTION_LABEL[section.id] || section.title}
         </button>
       ))}
@@ -198,6 +295,15 @@ function ResultView({ facts, reading }) {
   const [activeSection, setActiveSection] = useState('overview');
   const section = reading.sections.find(item => item.id === activeSection) || reading.sections[0];
   const topPalaces = facts.derived.luckRanking.top3;
+  const asOfDateLabel = formatCivilDate(facts.profile.asOfDate);
+  const maxDaXianAge = Math.max(0, ...facts.palaces.map(palace => palace.daXian?.end || 0));
+  const exceedsDaXianRange = !facts.derived.currentDaXian
+    && maxDaXianAge > 0
+    && facts.profile.nominalAge > maxDaXianAge;
+  const uniquePalaceReadings = useMemo(
+    () => getUniquePalaceReadings(reading.palaceReadings),
+    [reading.palaceReadings],
+  );
 
   return (
     <main className="mp-result">
@@ -206,12 +312,21 @@ function ResultView({ facts, reading }) {
           <p className="mp-kicker">Life Pattern</p>
           <h2>{reading.sourceReadings.overview.headline}</h2>
           <p>{reading.profileTitle}</p>
+          {asOfDateLabel && (
+            <small className="mp-as-of-date">計算基準日：{asOfDateLabel}</small>
+          )}
         </div>
         <div className="mp-age-chip">
           <span>{facts.profile.nominalAge}</span>
           <small>虛歲</small>
         </div>
       </section>
+
+      {exceedsDaXianRange && (
+        <aside className="mp-limit-notice" role="note">
+          此命盤的大限資料排至虛歲 {maxDaXianAge} 歲；目前不提供大限與年度判讀，其餘本命內容仍可查看。
+        </aside>
+      )}
 
       <section className="mp-summary-band">
         {topPalaces.map(item => (
@@ -249,8 +364,8 @@ function ResultView({ facts, reading }) {
           <h3>十二宮速覽</h3>
         </div>
         <div className="mp-card-grid">
-          {reading.palaceReadings.map(item => (
-            <article key={item.palace.num + item.palace.personnel12.map(p => p.name).join('')} className="mp-palace-card">
+          {uniquePalaceReadings.map(item => (
+            <article key={item.palace.num} className="mp-palace-card">
               <div>
                 <span>{item.palace.fullName}{item.palace.num}</span>
                 <strong>{item.palace.personnel12.map(p => p.name).join(' / ') || '中宮'}</strong>
@@ -276,6 +391,7 @@ function buildBirthLocation(form) {
 }
 
 function createReadingFromForm(nextForm) {
+  const now = new Date();
   const { facts, normalizedBirth } = calculateMingPan({
     calendarType: nextForm.calendarType,
     birthDate: { year: nextForm.year, month: nextForm.month, day: nextForm.day },
@@ -284,7 +400,14 @@ function createReadingFromForm(nextForm) {
     birthLocation: buildBirthLocation(nextForm),
     isDst: nextForm.isDst,
     useTrueSolarTime: nextForm.useTrueSolarTime,
-  }, { asOfDate: new Date('2026-05-05T00:00:00+08:00') });
+    isLeapMonth: Boolean(nextForm.isLeapMonth),
+  }, {
+    asOfDate: {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      day: now.getDate(),
+    },
+  });
   return {
     facts,
     normalizedBirth,
@@ -302,6 +425,7 @@ function App() {
     return {
       displayName: '命主',
       calendarType: 'solar',
+      isLeapMonth: false,
       year: 1990,
       month: 5,
       day: 12,

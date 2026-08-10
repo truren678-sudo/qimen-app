@@ -41,12 +41,19 @@ const getHarmText = (harm) => {
     return harm;
 };
 
-export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy, onPalaceClick }) {
+export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy, onPalaceClick, controlZoom = 1 }) {
     const { num, name, sym, shen, star, door, tianGan, diGan, tianGanExtra, diGanExtra, extraStar, doorHarm, tianGanHarm, diGanHarm, tianGanExtraHarm, diGanExtraHarm, daXian, personnel12 } = palace;
     const isCenter = num === 5;
 
     // 為了先符合版式，拔去固定的五行顏色，統一只以粗體大字呈現（除非是特例門迫等，後續再補算法）
     const doorCls = 'text-gray-900 font-bold';
+    const handlePalaceKeyDown = event => {
+        if (!onPalaceClick || event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onPalaceClick(palace);
+        }
+    };
 
     if (isCenter) {
         if (isDayQimen) {
@@ -74,7 +81,7 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
 
                 {/* 單宮拷貝按鈕 */}
                 {onCopy && (
-                    <button onClick={onCopy} className="absolute bottom-1 right-1 text-[10px] text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-200 border border-gray-200 rounded px-1 min-w-[16px] min-h-[16px] flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity" title="複製此宮位 MD">
+                    <button type="button" onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 right-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
                         📋
                     </button>
                 )}
@@ -83,7 +90,14 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
     }
 
     return (
-        <div className={`relative bg-white border border-gray-300 min-h-[160px] p-2${onPalaceClick ? ' cursor-pointer hover:bg-amber-50/40 transition-colors' : ''}`} onClick={onPalaceClick ? () => onPalaceClick(palace) : undefined}>
+        <div
+            role={onPalaceClick ? 'button' : undefined}
+            tabIndex={onPalaceClick ? 0 : undefined}
+            aria-label={onPalaceClick ? `查看${name}${num}宮行為風水指導` : undefined}
+            className={`relative bg-white border border-gray-300 min-h-[160px] p-2${onPalaceClick ? ' cursor-pointer hover:bg-amber-50/40 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#4395CA] transition-colors' : ''}`}
+            onClick={onPalaceClick ? () => onPalaceClick(palace) : undefined}
+            onKeyDown={handlePalaceKeyDown}
+        >
 
             {/* 命盤專屬：顯示在宮位外圍的人事十二宮 */}
             {personnel12 && personnel12.map((p, idx) => {
@@ -173,7 +187,7 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
 
             {/* 單宮拷貝按鈕 */}
             {onCopy && (
-                <button onClick={onCopy} className="absolute bottom-1 right-1 text-[10px] text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-200 border border-gray-200 rounded px-1 min-w-[16px] min-h-[16px] flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity z-20" title="複製此宮位 MD">
+                <button type="button" onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 right-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity z-20" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
                     📋
                 </button>
             )}
@@ -182,6 +196,23 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
 }
 
 export function NineGrid({ result }) {
+    const [selectedPalace, setSelectedPalace] = useState(null);
+    const containerRef = useRef(null);
+    const [scale, setScale] = useState(1);
+    const hasResult = Boolean(result?.palaces);
+
+    useEffect(() => {
+        const measure = () => {
+            const w = containerRef.current?.offsetWidth || 0;
+            setScale(w > 0 && w < 544 ? w / 544 : 1);
+        };
+
+        const observer = new ResizeObserver(measure);
+        if (containerRef.current) observer.observe(containerRef.current);
+        measure();
+        return () => observer.disconnect();
+    }, [hasResult]);
+
     if (!result || !result.palaces) {
         return (
             <div className="flex items-center justify-center w-[500px] h-[500px] bg-white text-gray-400 text-sm border-2 border-dashed border-gray-300 rounded-sm">
@@ -194,10 +225,7 @@ export function NineGrid({ result }) {
     const maPal = DZ_PAL[result.yiMa];
 
     const isMingPan = result.chartType === '命盤';
-    const isYinPan = result.chartType === '陰盤奇門';
     const isShiJia = result.chartType === '時家置閏';
-
-    const [selectedPalace, setSelectedPalace] = useState(null);
 
     const getOuterYinGan = (palNum) => {
         if (isMingPan) return null;
@@ -211,25 +239,6 @@ export function NineGrid({ result }) {
             </div>
         );
     };
-
-    const containerRef = useRef(null);
-    const [scale, setScale] = useState(1);
-
-    useEffect(() => {
-        const measure = () => {
-            const w = containerRef.current?.offsetWidth || 0;
-            if (w > 0 && w < 544) {
-                setScale(w / 544);
-            } else {
-                setScale(1);
-            }
-        };
-
-        const observer = new ResizeObserver(measure);
-        if (containerRef.current) observer.observe(containerRef.current);
-        measure();
-        return () => observer.disconnect();
-    }, []);
 
     return (
     <>
@@ -270,6 +279,7 @@ export function NineGrid({ result }) {
                                 isMa={maPal === p.num}
                                 isDayQimen={result.isDayQimen}
                                 isMingPan={isMingPan}
+                                controlZoom={scale < 1 ? 1 / scale : 1}
                                 onCopy={() => {
                                     const md = exportPalace(result, p.num);
                                     if(md) navigator.clipboard.writeText(md).then(() => alert(`已複製 ${p.name}宮 (\`${p.num}\`) 的 Markdown！`));

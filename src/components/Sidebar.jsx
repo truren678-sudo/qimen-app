@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
-import { Lunar, Solar } from 'lunar-javascript';
+import { useMemo, useState } from 'react';
+import { Solar } from 'lunar-javascript';
 import { CHINA_PROVINCES, OVERSEAS_COUNTRIES, fmtOffset, calcSolarTimeCorrectionMinutes } from '../data/locationData';
 import { findSolarFromBazi } from '../utils/baziUtils';
+import { addCivilMinutes, daysInGregorianMonth } from '../utils/civilDateTime';
+import { daysInLunarMonth, getLunarMonthsOfYear, lunarToSolarParts } from '../utils/lunarDate';
 
 const YEARS = Array.from({ length: 150 }, (_, i) => 1900 + i + 1);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
-const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 const LUNAR_MONTHS = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '臘'];
@@ -14,37 +15,14 @@ const DI_ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
-// 計算某農曆年份的月份（含閏月）
-function getLunarMonthsOfYear(lunarYear) {
-    const months = [];
-    for (let m = 1; m <= 12; m++) {
-        months.push({ month: m, isLeap: false, label: `${LUNAR_MONTHS[m - 1]}月` });
-    }
-    // 找閏月
-    try {
-        for (let m = 1; m <= 12; m++) {
-            const lunar = Lunar.fromYmd(lunarYear, m, 1);
-            if (lunar.getYearInGanZhi && lunar.getLeapMonth && lunar.getLeapMonth() === m) {
-                months.splice(m, 0, { month: m, isLeap: true, label: `閏${LUNAR_MONTHS[m - 1]}月` });
-                break;
-            }
-        }
-    } catch (e) { /* ignore */ }
-    return months;
-}
-
-// 取得農曆某月的最大天數
-function getLunarDaysInMonth(lunarYear, lunarMonth, isLeap) {
-    try {
-        const lunar = Lunar.fromYmd(lunarYear, lunarMonth, 1);
-        return isLeap ? lunar.getYearLeapDays?.() || 29 : lunar.getMonthDays?.() || 30;
-    } catch {
-        return 30;
-    }
-}
-
-export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, gender, setGender, onCalculate, onClear, savedRecords, onSaveRecord, onLoadRecord, onDeleteRecord }) {
+export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, gender, setGender, onCalculate, savedRecords, onSaveRecord, onLoadRecord, onDeleteRecord, loadedInputSettings }) {
     const { year, month, day, hour, minute } = timeParams;
+    const restoredSettings = loadedInputSettings?.settings;
+    const isRestoringRecord = Boolean(loadedInputSettings);
+    const restoredLocationTab = restoredSettings?.locationTab === 'overseas' ? 'overseas' : 'china';
+    const restoredProvince = CHINA_PROVINCES.find(item => item.province === restoredSettings?.selectedProvince);
+    const restoredCity = restoredProvince?.cities.find(item => item.name === restoredSettings?.selectedCityName) || null;
+    const restoredCountry = OVERSEAS_COUNTRIES.find(item => item.name === restoredSettings?.selectedCountryName) || null;
     const [selectedRecordId, setSelectedRecordId] = useState('');
 
     // ── 公曆/農曆切換
@@ -59,8 +37,12 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
     const [lunarMinute, setLunarMinute] = useState(0);
 
     // 農曆月份列表
-    const lunarMonthList = useMemo(() => getLunarMonthsOfYear(lunarYear), [lunarYear]);
-    const maxLunarDay = useMemo(() => getLunarDaysInMonth(lunarYear, lunarMonth, lunarIsLeap), [lunarYear, lunarMonth, lunarIsLeap]);
+    const lunarMonthList = useMemo(() => getLunarMonthsOfYear(lunarYear).map(item => ({
+        ...item,
+        label: `${item.isLeap ? '閏' : ''}${LUNAR_MONTHS[item.month - 1]}月`,
+    })), [lunarYear]);
+    const maxLunarDay = useMemo(() => daysInLunarMonth(lunarYear, lunarMonth, lunarIsLeap), [lunarYear, lunarMonth, lunarIsLeap]);
+    const maxSolarDay = useMemo(() => daysInGregorianMonth(year, month), [year, month]);
 
     // ── 四柱輸入狀態
     const [baziYg, setBaziYg] = useState('甲');
@@ -109,21 +91,23 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
     };
 
     // ── 夏令時（DST）
-    const [isDst, setIsDst] = useState(false);
+    const [isDst, setIsDst] = useState(Boolean(restoredSettings?.isDst));
 
-    // ── 真太陽時開關
-    const [useSolarTimeCorr, setUseSolarTimeCorr] = useState(true);
+    // ── 地方平太陽時（經度）修正開關
+    const [useSolarTimeCorr, setUseSolarTimeCorr] = useState(
+        isRestoringRecord ? Boolean(restoredSettings?.useSolarTimeCorr) : true,
+    );
 
     // ── 地區選擇：是否展開
-    const [locationOpen, setLocationOpen] = useState(false);
-    const [locationTab, setLocationTab] = useState('china'); // 'china' | 'overseas'
+    const [locationOpen, setLocationOpen] = useState(Boolean(restoredCity || restoredCountry));
+    const [locationTab, setLocationTab] = useState(restoredLocationTab); // 'china' | 'overseas'
 
     // 國內地區
-    const [selectedProvince, setSelectedProvince] = useState('');
-    const [selectedCity, setSelectedCity] = useState(null); // { name, lng }
+    const [selectedProvince, setSelectedProvince] = useState(restoredLocationTab === 'china' ? (restoredProvince?.province || '') : '');
+    const [selectedCity, setSelectedCity] = useState(restoredLocationTab === 'china' ? restoredCity : null); // { name, lng }
 
     // 海外地區
-    const [selectedCountry, setSelectedCountry] = useState(null); // { name, offset, dstOffset, stdLng }
+    const [selectedCountry, setSelectedCountry] = useState(restoredLocationTab === 'overseas' ? restoredCountry : null); // { name, offset, dstOffset, stdLng }
     // 海外地區分組
     const overseasRegions = useMemo(() => {
         const groups = {};
@@ -140,7 +124,7 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
         return CHINA_PROVINCES.find(p => p.province === selectedProvince)?.cities || [];
     }, [selectedProvince]);
 
-    // 真太陽時修正（分鐘）
+    // 地方平太陽時修正（分鐘，不含均時差）
     const solarTimeCorr = useMemo(() => {
         if (locationTab === 'china' && selectedCity) {
             return calcSolarTimeCorrectionMinutes(selectedCity.lng);
@@ -156,8 +140,16 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
     }, [locationTab, selectedCity, selectedCountry, selectedProvince]);
 
     // ── 公曆時間設定器
-    const setYear = (y) => setTimeParams({ ...timeParams, year: y });
-    const setMonth = (m) => setTimeParams({ ...timeParams, month: m });
+    const setYear = (y) => setTimeParams({
+        ...timeParams,
+        year: y,
+        day: Math.min(day, daysInGregorianMonth(y, month)),
+    });
+    const setMonth = (m) => setTimeParams({
+        ...timeParams,
+        month: m,
+        day: Math.min(day, daysInGregorianMonth(year, m)),
+    });
     const setDay = (d) => setTimeParams({ ...timeParams, day: d });
     const setHour = (h) => setTimeParams({ ...timeParams, hour: h });
     const setMinute = (min) => setTimeParams({ ...timeParams, minute: min });
@@ -170,43 +162,55 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
     // ── 農曆 → 公曆轉換並排盤
     const convertLunarToSolar = () => {
         try {
-            const solar = Lunar.fromYmd(lunarYear, lunarMonth, lunarDay).getSolar();
-            return { year: solar.getYear(), month: solar.getMonth(), day: solar.getDay(), hour: lunarHour, minute: lunarMinute };
-        } catch (e) {
+            return lunarToSolarParts({
+                year: lunarYear,
+                month: lunarMonth,
+                day: lunarDay,
+                hour: lunarHour,
+                minute: lunarMinute,
+            }, lunarIsLeap);
+        } catch {
             alert('農曆日期轉換失敗，請確認日期是否正確');
             return null;
         }
     };
 
-    // ── 計算最終排盤時間（公曆 + DST修正 + 真太陽時修正）
+    // ── 計算最終排盤時間（公曆 + DST + 經度時間修正）
     const computeFinalParams = (baseParams) => {
         let finalParams = { ...baseParams };
 
         // 海外：將出生時間轉換為 UTC，再換算為 UTC+8 後排盤
-        if (locationTab === 'overseas' && selectedCountry) {
+        if (chartType === '命盤' && locationTab === 'overseas' && selectedCountry) {
             const { offset, dstOffset } = selectedCountry;
             const effectiveOffset = isDst && dstOffset != null ? dstOffset : offset;
-            const chinaOffset = 8;
-            // 轉換：先把當地時間轉為 UTC，再加 8 小時得北京時間
-            const d = new Date(Date.UTC(finalParams.year, finalParams.month - 1, finalParams.day, finalParams.hour - effectiveOffset, finalParams.minute));
-            d.setUTCHours(d.getUTCHours() + chinaOffset);
-            finalParams = { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours(), minute: d.getUTCMinutes() };
+            // 當地時間加上 UTC+8 與當地時區的分鐘差，避免半小時時區被截斷。
+            finalParams = addCivilMinutes(finalParams, Math.round((8 - effectiveOffset) * 60));
         }
 
-        // 國內：真太陽時修正（命盤用）
+        // 國內：地方平太陽時經度修正（命盤用，不含均時差）
         if (chartType === '命盤' && locationTab === 'china' && selectedCity && useSolarTimeCorr) {
-            const d = new Date(finalParams.year, finalParams.month - 1, finalParams.day, finalParams.hour, finalParams.minute + solarTimeCorr);
-            finalParams = { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes() };
+            finalParams = addCivilMinutes(finalParams, solarTimeCorr);
         }
 
         // 國內夏令時（歷史上台灣/中國大陸曾使用）
-        if (isDst && locationTab === 'china') {
-            const d = new Date(finalParams.year, finalParams.month - 1, finalParams.day, finalParams.hour - 1, finalParams.minute);
-            finalParams = { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes() };
+        if (chartType === '命盤' && isDst && locationTab === 'china') {
+            finalParams = addCivilMinutes(finalParams, -60);
         }
 
         return finalParams;
     };
+
+    const buildCalculationContext = (rawTimeParams) => ({
+        rawTimeParams: { ...rawTimeParams },
+        inputSettings: {
+            locationTab,
+            selectedProvince: locationTab === 'china' ? selectedProvince : '',
+            selectedCityName: locationTab === 'china' ? selectedCity?.name || '' : '',
+            selectedCountryName: locationTab === 'overseas' ? selectedCountry?.name || '' : '',
+            isDst,
+            useSolarTimeCorr,
+        },
+    });
 
     const handleCalc = () => {
         let baseParams = timeParams;
@@ -239,21 +243,19 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
             baseParams = converted;
             setTimeParams(converted);
         }
-        onCalculate(computeFinalParams(baseParams));
+        onCalculate(computeFinalParams(baseParams), buildCalculationContext(baseParams));
     };
 
     const handleShiftJu = (hoursToAdd) => {
-        const d = new Date(year, month - 1, day, hour, minute);
-        d.setHours(d.getHours() + hoursToAdd);
-        const newParams = { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes() };
+        const newParams = addCivilMinutes(timeParams, hoursToAdd * 60);
         setTimeParams(newParams);
-        onCalculate(newParams);
+        onCalculate(computeFinalParams(newParams), buildCalculationContext(newParams));
     };
 
     const isMingPan = chartType === '命盤';
 
     return (
-        <aside className="w-full md:w-[300px] flex-shrink-0 bg-white p-4 md:p-6 border-r border-gray-200 overflow-y-auto">
+        <aside className="w-full md:w-[300px] h-full flex-shrink-0 bg-white p-4 md:p-6 border-r border-gray-200 overflow-y-auto">
 
             {/* ── 設定時間 ── */}
             <div className="flex items-center justify-between mb-2">
@@ -263,6 +265,8 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                     <div className="flex bg-gray-100 rounded-full p-0.5 border border-gray-200">
                         {['solar', 'lunar', 'bazi'].map(mode => (
                             <button key={mode}
+                                type="button"
+                                aria-pressed={calMode === mode}
                                 onClick={() => {
                                     setCalMode(mode);
                                     if (mode === 'bazi') initBaziFromSolar();
@@ -279,29 +283,29 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
             {calMode === 'solar' && (
                 <div className="flex flex-col gap-2 mb-4">
                     <div className="flex gap-1.5">
-                        <select value={year} onChange={e => setYear(+e.target.value)}
+                        <select aria-label="公曆年份" value={year} onChange={e => setYear(+e.target.value)}
                             className="flex-1 h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-1 focus:outline-none focus:border-blue-500">
                             {YEARS.map(y => <option key={y} value={y}>{y}年</option>)}
                         </select>
-                        <select value={month} onChange={e => setMonth(+e.target.value)}
+                        <select aria-label="公曆月份" value={month} onChange={e => setMonth(+e.target.value)}
                             className="flex-1 h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-1 focus:outline-none focus:border-blue-500">
                             {MONTHS.map(m => <option key={m} value={m}>{m}月</option>)}
                         </select>
-                        <select value={day} onChange={e => setDay(+e.target.value)}
+                        <select aria-label="公曆日期" value={day} onChange={e => setDay(+e.target.value)}
                             className="flex-1 h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-1 focus:outline-none focus:border-blue-500">
-                            {DAYS.map(d => <option key={d} value={d}>{d}日</option>)}
+                            {Array.from({ length: maxSolarDay }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}日</option>)}
                         </select>
                     </div>
                     <div className="flex gap-1.5">
-                        <select value={hour} onChange={e => setHour(+e.target.value)}
+                        <select aria-label="小時" value={hour} onChange={e => setHour(+e.target.value)}
                             className="flex-1 h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-1 focus:outline-none focus:border-blue-500">
                             {HOURS.map(h => <option key={h} value={h}>{h}時</option>)}
                         </select>
-                        <select value={minute} onChange={e => setMinute(+e.target.value)}
+                        <select aria-label="分鐘" value={minute} onChange={e => setMinute(+e.target.value)}
                             className="flex-1 h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-1 focus:outline-none focus:border-blue-500">
                             {MINUTES.map(m => <option key={m} value={m}>{pad(m)}分</option>)}
                         </select>
-                        <button onClick={handleNow}
+                        <button type="button" onClick={handleNow}
                             className="flex-1 h-8 text-xs text-blue-500 font-medium border-2 border-blue-300 rounded-md hover:bg-blue-50 transition-colors">
                             現在時間
                         </button>
@@ -313,11 +317,11 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
             {calMode === 'lunar' && (
                 <div className="flex flex-col gap-2 mb-4">
                     <div className="flex gap-1.5">
-                        <select value={lunarYear} onChange={e => { setLunarYear(+e.target.value); setLunarIsLeap(false); setLunarDay(1); }}
+                        <select aria-label="農曆年份" value={lunarYear} onChange={e => { setLunarYear(+e.target.value); setLunarIsLeap(false); setLunarDay(1); }}
                             className="flex-1 h-8 text-sm text-[#8b5a7a] font-medium border-2 border-purple-300 rounded-md px-1 focus:outline-none">
                             {YEARS.map(y => <option key={y} value={y}>{y}年</option>)}
                         </select>
-                        <select value={`${lunarMonth}-${lunarIsLeap}`}
+                        <select aria-label="農曆月份" value={`${lunarMonth}-${lunarIsLeap}`}
                             onChange={e => {
                                 const [m, leap] = e.target.value.split('-');
                                 setLunarMonth(+m);
@@ -329,7 +333,7 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                                 <option key={`${m}-${isLeap}`} value={`${m}-${isLeap}`}>{label}</option>
                             ))}
                         </select>
-                        <select value={lunarDay} onChange={e => setLunarDay(+e.target.value)}
+                        <select aria-label="農曆日期" value={lunarDay} onChange={e => setLunarDay(+e.target.value)}
                             className="flex-1 h-8 text-sm text-[#8b5a7a] font-medium border-2 border-purple-300 rounded-md px-1 focus:outline-none">
                             {Array.from({ length: maxLunarDay }, (_, i) => i + 1).map(d => (
                                 <option key={d} value={d}>{d}日</option>
@@ -337,11 +341,11 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                         </select>
                     </div>
                     <div className="flex gap-1.5">
-                        <select value={lunarHour} onChange={e => setLunarHour(+e.target.value)}
+                        <select aria-label="農曆輸入小時" value={lunarHour} onChange={e => setLunarHour(+e.target.value)}
                             className="flex-1 h-8 text-sm text-[#8b5a7a] font-medium border-2 border-purple-300 rounded-md px-1 focus:outline-none">
                             {HOURS.map(h => <option key={h} value={h}>{h}時</option>)}
                         </select>
-                        <select value={lunarMinute} onChange={e => setLunarMinute(+e.target.value)}
+                        <select aria-label="農曆輸入分鐘" value={lunarMinute} onChange={e => setLunarMinute(+e.target.value)}
                             className="flex-1 h-8 text-sm text-[#8b5a7a] font-medium border-2 border-purple-300 rounded-md px-1 focus:outline-none">
                             {MINUTES.map(m => <option key={m} value={m}>{pad(m)}分</option>)}
                         </select>
@@ -408,6 +412,9 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                 <div className="flex items-center justify-between mb-4 px-1">
                     <span className="text-xs text-gray-600 font-medium">夏令時（DST）</span>
                     <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isDst}
                         onClick={() => setIsDst(v => !v)}
                         className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${isDst ? 'bg-[#4395CA]' : 'bg-gray-300'}`}
                         aria-label="夏令時開關">
@@ -421,6 +428,8 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
             {isMingPan && (
                 <div className="mb-4">
                     <button
+                        type="button"
+                        aria-expanded={locationOpen}
                         onClick={() => setLocationOpen(v => !v)}
                         className="w-full flex justify-between items-center text-sm font-bold text-gray-700 mb-2 py-1 border-b border-gray-200 hover:text-[#4395CA] transition-colors">
                         <span>選擇出生地：</span>
@@ -436,6 +445,8 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                             <div className="flex bg-white rounded-full p-0.5 border border-gray-200 mb-3">
                                 {[['china', '國內'], ['overseas', '海外']].map(([key, label]) => (
                                     <button key={key}
+                                        type="button"
+                                        aria-pressed={locationTab === key}
                                         onClick={() => setLocationTab(key)}
                                         className={`flex-1 py-0.5 rounded-full text-xs font-bold transition-colors ${locationTab === key ? 'bg-[#8b5a7a] text-white shadow-sm' : 'text-gray-500'}`}>
                                         {label}
@@ -447,6 +458,7 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                             {locationTab === 'china' && (
                                 <div className="flex flex-col gap-1.5">
                                     <select
+                                        aria-label="出生省份或地區"
                                         value={selectedProvince}
                                         onChange={e => { setSelectedProvince(e.target.value); setSelectedCity(null); }}
                                         className="w-full h-8 text-xs text-gray-700 border border-gray-300 rounded-md px-2 bg-white focus:outline-none focus:border-[#4395CA]">
@@ -457,6 +469,7 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                                     </select>
                                     {selectedProvince && (
                                         <select
+                                            aria-label="出生城市"
                                             value={selectedCity?.name || ''}
                                             onChange={e => {
                                                 const city = citiesOfProvince.find(c => c.name === e.target.value);
@@ -481,8 +494,12 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                                                 {solarTimeCorr === 0 && <span className="text-green-500"> （無需修正）</span>}
                                                 </span>
                                                 <div className="flex items-center gap-1.5 ml-2">
-                                                    <span className="text-[11px] text-gray-500">真太陽時</span>
+                                                    <span className="text-[11px] text-gray-500" title="依城市經度換算地方平太陽時，不含均時差">經度時間修正</span>
                                                     <button
+                                                        type="button"
+                                                        role="switch"
+                                                        aria-checked={useSolarTimeCorr}
+                                                        aria-label="使用城市經度時間修正"
                                                         onClick={() => setUseSolarTimeCorr(v => !v)}
                                                         className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${useSolarTimeCorr ? 'bg-[#4395CA]' : 'bg-gray-300'}`}>
                                                         <span className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${useSolarTimeCorr ? 'translate-x-4' : 'translate-x-0'}`} />
@@ -501,6 +518,7 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                             {locationTab === 'overseas' && (
                                 <div className="flex flex-col gap-1.5">
                                     <select
+                                        aria-label="海外出生國家或地區"
                                         value={selectedCountry?.name || ''}
                                         onChange={e => {
                                             const c = OVERSEAS_COUNTRIES.find(x => x.name === e.target.value);
@@ -536,6 +554,7 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
             {/* ── 排盤系統 ── */}
             <h2 className="text-sm font-bold text-gray-700 mb-2">排盤系統：</h2>
             <select
+                aria-label="排盤系統"
                 value={chartType}
                 onChange={e => setChartType(e.target.value)}
                 className="w-full h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-2 mb-3 focus:outline-none shrink-0">
@@ -553,6 +572,8 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                     <span className="text-sm font-bold text-gray-700 shrink-0">性別：</span>
                     <div className="flex flex-1 gap-2">
                         <button
+                            type="button"
+                            aria-pressed={gender === '男'}
                             onClick={() => setGender('男')}
                             className={`flex-1 h-8 text-sm font-bold rounded-md border-2 transition-colors ${gender === '男'
                                 ? 'bg-blue-500 text-white border-blue-500'
@@ -560,6 +581,8 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
                             ♂ 男命
                         </button>
                         <button
+                            type="button"
+                            aria-pressed={gender === '女'}
                             onClick={() => setGender('女')}
                             className={`flex-1 h-8 text-sm font-bold rounded-md border-2 transition-colors ${gender === '女'
                                 ? 'bg-pink-500 text-white border-pink-500'
@@ -572,20 +595,20 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
 
             {/* ── 排盤按鈕 ── */}
             <div className="flex gap-2 mb-2">
-                <button onClick={onSaveRecord} className="flex-1 h-8 text-xs text-pink-500 font-bold border-2 border-pink-200 bg-pink-50/50 rounded-md hover:bg-pink-50 transition-colors">
+                <button type="button" onClick={onSaveRecord} className="flex-1 h-8 text-xs text-pink-500 font-bold border-2 border-pink-200 bg-pink-50/50 rounded-md hover:bg-pink-50 transition-colors">
                     儲存排盤
                 </button>
-                <button onClick={handleCalc}
+                <button type="button" onClick={handleCalc}
                     className="flex-1 h-8 text-xs text-white font-bold bg-[#4395CA] border-2 border-[#4395CA] rounded-md hover:bg-[#347BA9] transition-colors">
                     開始排盤
                 </button>
             </div>
             <div className="flex gap-2 mb-5">
-                <button onClick={() => handleShiftJu(-2)}
+                <button type="button" onClick={() => handleShiftJu(-2)}
                     className="flex-1 h-8 text-xs text-blue-600 font-bold border-2 border-blue-300 rounded-md hover:bg-blue-50 transition-colors">
                     上一局
                 </button>
-                <button onClick={() => handleShiftJu(2)}
+                <button type="button" onClick={() => handleShiftJu(2)}
                     className="flex-1 h-8 text-xs text-blue-600 font-bold border-2 border-blue-300 rounded-md hover:bg-blue-50 transition-colors">
                     下一局
                 </button>
@@ -594,10 +617,12 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
             {/* ── 瀏覽儲存的盤局 ── */}
             <h2 className="text-sm font-bold text-gray-700 mb-2">瀏覽儲存的盤局：</h2>
             <select
+                aria-label="盤局排序"
                 className="w-full h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-2 mb-2 bg-white">
                 <option>依時間排序</option>
             </select>
             <select
+                aria-label="已儲存盤局"
                 value={selectedRecordId}
                 onChange={e => setSelectedRecordId(e.target.value)}
                 className="w-full h-8 text-sm text-blue-600 font-medium border-2 border-blue-300 rounded-md px-2 mb-3 bg-white">
