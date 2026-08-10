@@ -11,6 +11,7 @@
  *  6. 布八神（神隨值符星，陽順轉陰逆轉）
  */
 import { Solar } from 'lunar-javascript';
+import { addCivilMinutes, isValidCivilTime, isValidGregorianDate } from './utils/civilDateTime';
 
 // ===== 基礎常數 =====
 export const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
@@ -61,6 +62,13 @@ function ringIdx(palNum) {
     return RING.indexOf(palNum === 5 ? 2 : palNum); // 中5一律寄坤2
 }
 
+function getCanonicalQimenYear(solarYear, siZhu) {
+    const mod = (value, divisor) => ((value % divisor) + divisor) % divisor;
+    const solarYearGanZhi = `${TIAN_GAN[mod(solarYear - 4, 10)]}${DI_ZHI[mod(solarYear - 4, 12)]}`;
+    const pillarYearGanZhi = `${siZhu.yearGan}${siZhu.yearZhi}`;
+    return pillarYearGanZhi === solarYearGanZhi ? solarYear : solarYear - 1;
+}
+
 // ── 年月日家定局與計算輔助函數 ──
 function getYearQimenInfo(year) {
     const startYear = 1984; // 近代最近的一個甲子年
@@ -100,11 +108,28 @@ function getMonthQimenInfo(siZhu) {
 }
 
 // ── 日家休門太乙排盤法專屬 ──
-function getRiJiaQimenPalaces(year, month, day, siZhu) {
-    const target = new Date(year, month - 1, day);
-    const xiazhi = new Date(year, 5, 21);
-    const dongzhi_this = new Date(year, 11, 22);
-    const dongzhi_prev = new Date(year - 1, 11, 22);
+function getCivilMinuteKey({ year, month, day, hour = 0, minute = 0 }) {
+    return (((year * 13 + month) * 32 + day) * 24 + hour) * 60 + minute;
+}
+
+function getRiJiaSolsticeBoundary(year, month, expectedName) {
+    const jieQi = Solar.fromYmd(year, month, 15).getLunar().getNextJieQi(true);
+    const jieQiSolar = jieQi.getSolar();
+
+    // 日家採「晚子時換日」：節氣曆日的前一晚 23:00 即換遁，
+    // 不以天文交節的精確分鐘作為日家邊界。
+    const calendarDay = jieQi.getName() === expectedName
+        ? { year: jieQiSolar.getYear(), month: jieQiSolar.getMonth(), day: jieQiSolar.getDay(), hour: 0, minute: 0 }
+        : { year, month, day: month === 6 ? 21 : 22, hour: 0, minute: 0 };
+
+    return addCivilMinutes(calendarDay, -60);
+}
+
+function getRiJiaQimenPalaces(year, month, day, hour, minute, siZhu) {
+    const target = getCivilMinuteKey({ year, month, day, hour, minute });
+    const xiazhi = getCivilMinuteKey(getRiJiaSolsticeBoundary(year, 6, '夏至'));
+    const dongzhi_this = getCivilMinuteKey(getRiJiaSolsticeBoundary(year, 12, '冬至'));
+    const dongzhi_prev = getCivilMinuteKey(getRiJiaSolsticeBoundary(year - 1, 12, '冬至'));
 
     let isYin = false;
     if (target >= dongzhi_prev && target < xiazhi) isYin = false;
@@ -407,6 +432,9 @@ export function getYinPanJu(solar, siZhu) {
 
 // ===== 四柱計算 =====
 export function getSiZhu(year, month, day, hour, minute) {
+    const civilTime = { year, month, day, hour, minute };
+    if (!isValidGregorianDate(civilTime) || !isValidCivilTime(civilTime)) return null;
+
     try {
         const solar = Solar.fromYmdHms(year, month, day, hour, minute, 0);
         const lunar = solar.getLunar();
@@ -418,9 +446,9 @@ export function getSiZhu(year, month, day, hour, minute) {
             hourGan: bazi.getTimeGan(), hourZhi: bazi.getTimeZhi(),
             lunarYear: lunar.getYear(), lunarMonth: Math.abs(lunar.getMonth()),
             lunarDay: lunar.getDay(), isLeapMonth: lunar.getMonth() < 0,
-            weekDay: new Date(year, month - 1, day).getDay(),
+            weekDay: new Date(Date.UTC(year, month - 1, day)).getUTCDay(),
         };
-    } catch (e) { return null; }
+    } catch { return null; }
 }
 
 const XUN_NAMES = ['甲子', '甲戌', '甲申', '甲午', '甲辰', '甲寅'];
@@ -428,20 +456,22 @@ const XUN_KONG = { '甲子': '戌亥', '甲戌': '申酉', '甲申': '午未', '
 
 // ===== 主函數 =====
 export function calculateQimen(year, month, day, hour, minute, options = {}) {
-    const { chartType = '時家置閏', gender = '男' } = options;
+    const { chartType = '時家置閏', gender = '男', liuNianEndAge: requestedLiuNianEndAge } = options;
 
     const siZhu = getSiZhu(year, month, day, hour, minute);
     if (!siZhu) return null;
 
     const solar = Solar.fromYmdHms(year, month, day, hour, minute, 0);
     const jqInfoOrig = getJieQiInfo(solar);
+    let chartSiZhu = siZhu;
 
     let juNum, isYin, yuanName, jieqiName;
     let targetGan, targetZhi, doorTargetZhi;
     let isDayQimen = false;
 
     if (chartType === '年家奇門') {
-        const info = getYearQimenInfo(year);
+        // 元運與年柱共用同一個立春換年基準，避免元旦先換局、年柱卻仍屬前一年。
+        const info = getYearQimenInfo(getCanonicalQimenYear(year, siZhu));
         juNum = info.juNum; isYin = info.isYin; yuanName = info.yuanName; jieqiName = jqInfoOrig.jieqiName;
         targetGan = siZhu.yearGan; targetZhi = siZhu.yearZhi; doorTargetZhi = siZhu.yearZhi;
     } else if (chartType === '月家奇門') {
@@ -449,9 +479,14 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         juNum = info.juNum; isYin = info.isYin; yuanName = info.yuanName; jieqiName = jqInfoOrig.jieqiName;
         targetGan = siZhu.monthGan; targetZhi = siZhu.monthZhi; doorTargetZhi = siZhu.monthZhi;
     } else if (chartType === '日家奇門') {
+        isDayQimen = true;
+        if (hour >= 23) {
+            const nextDay = addCivilMinutes({ year, month, day, hour, minute }, 60);
+            chartSiZhu = getSiZhu(nextDay.year, nextDay.month, nextDay.day, nextDay.hour, nextDay.minute);
+        }
         juNum = jqInfoOrig.juNum; isYin = jqInfoOrig.isYin;
         yuanName = ['上元', '中元', '下元'][jqInfoOrig.yuan]; jieqiName = jqInfoOrig.jieqiName;
-        targetGan = siZhu.dayGan; targetZhi = siZhu.dayZhi; doorTargetZhi = siZhu.dayZhi;
+        targetGan = chartSiZhu.dayGan; targetZhi = chartSiZhu.dayZhi; doorTargetZhi = chartSiZhu.dayZhi;
     } else if (chartType === '陰盤奇門') {
         const yinJu = getYinPanJu(solar, siZhu);
         juNum = yinJu.juNum; isYin = yinJu.isYin; yuanName = yinJu.yuanName; jieqiName = jqInfoOrig.jieqiName;
@@ -466,7 +501,7 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
     let dayQimenXun = '';
 
     if (isDayQimen) {
-        const riRes = getRiJiaQimenPalaces(year, month, day, siZhu);
+        const riRes = getRiJiaQimenPalaces(year, month, day, hour, minute, chartSiZhu);
         doorPan = riRes.doorPan;
         starPan = riRes.starPan;
         isYin = riRes.isYin;
@@ -494,8 +529,6 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         if (doorPan[1] === '休門') fuYinFanYinStr += '門伏';
         if (doorPan[1] === '景門') fuYinFanYinStr += '門反';
     }
-
-    const isYinPan = chartType === '陰盤奇門';
 
     let palaces = PALACE_LAYOUT.map(p => {
         const diG = diPan[p.num] || '';
@@ -552,12 +585,12 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         return { ...p, yinGan: tpArr[srcIdx] };
     });
 
-    const targetZhiStr = chartType === '年家奇門' ? siZhu.yearZhi : chartType === '月家奇門' ? siZhu.monthZhi : chartType === '日家奇門' ? siZhu.dayZhi : siZhu.hourZhi;
+    const targetZhiStr = chartType === '年家奇門' ? chartSiZhu.yearZhi : chartType === '月家奇門' ? chartSiZhu.monthZhi : chartType === '日家奇門' ? chartSiZhu.dayZhi : chartSiZhu.hourZhi;
     const xunName = dayQimenXun || (xunInfo.xunNo !== undefined ? XUN_NAMES[xunInfo.xunNo] : '');
     const baseResult = {
         solar: { year, month, day, hour, minute, weekDay: siZhu.weekDay },
-        lunar: { year: siZhu.lunarYear, month: siZhu.lunarMonth, day: siZhu.lunarDay, isLeap: siZhu.isLeapMonth },
-        siZhu,
+        lunar: { year: chartSiZhu.lunarYear, month: chartSiZhu.lunarMonth, day: chartSiZhu.lunarDay, isLeap: chartSiZhu.isLeapMonth },
+        siZhu: chartSiZhu,
         jieqiName: jieqiName,
         yuanName: yuanName,
         juNum: juNum,
@@ -608,8 +641,8 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
 
         for (let i = 0; i < 9; i++) {
             daXian[currentPalace] = { start: startAge, end: endAge };
-            startAge = endAge;
-            endAge = startAge + 10;
+            startAge = endAge + 1;
+            endAge = startAge + 9;
 
             if (isForward) {
                 currentPalace = (currentPalace % 9) + 1;
@@ -619,14 +652,19 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
             }
         }
 
-        // 計算流年歲數 (1~70歲)
+        // 計算流年歲數：保留原本 70 歲的最低範圍，並至少覆蓋當前虛歲
         const DZ_PAL_MAP = {
             '子': 1, '丑': 8, '寅': 8, '卯': 3, '辰': 4, '巳': 4,
             '午': 9, '未': 2, '申': 2, '酉': 7, '戌': 6, '亥': 6
         };
         const liuNianAges = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [] };
         const bYearZhiIdx = DI_ZHI.indexOf(siZhu.yearZhi);
-        for (let age = 1; age <= 70; age++) {
+        const currentNominalAge = new Date().getFullYear() - year + 1;
+        const validRequestedAge = Number.isInteger(requestedLiuNianEndAge) && requestedLiuNianEndAge > 0
+            ? requestedLiuNianEndAge
+            : 0;
+        const liuNianEndAge = Math.max(70, currentNominalAge, validRequestedAge);
+        for (let age = 1; age <= liuNianEndAge; age++) {
             const yZhiIdx = (bYearZhiIdx + age - 1) % 12;
             const yZhi = DI_ZHI[yZhiIdx];
             const pNum = DZ_PAL_MAP[yZhi];

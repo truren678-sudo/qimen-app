@@ -9,7 +9,7 @@ A professional, open-source Qimen Dunjia (奇門遁甲) chart calculation system
 ## Features
 
 - **Comprehensive Charting**: Supports multiple Qimen charting methods including Shijia (時家), Zhuanpan (轉盤), Feipan (飛盤), and Mingpan (命盤).
-- **Time Conversions**: Accurate conversions between Solar and Lunar calendars, with support for True Solar Time (真太陽時) adjustments based on geographic location.
+- **Time Conversions**: Solar/lunar conversion plus optional local mean solar-time longitude adjustment for supported Chinese cities.
 - **Bazi Reverse Calculation**: Input the Four Pillars (Bazi) to dynamically reverse-calculate and find the corresponding Gregorian dates (spanning from 1801 to 2099).
 - **Smart Validation**: Intuitive UI with smart constraints (e.g., matching Yang Heavenly Stems with Yang Earthly Branches).
 - **PWA Ready**: Built as a Progressive Web App for seamless desktop and mobile experiences.

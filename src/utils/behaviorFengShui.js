@@ -127,7 +127,13 @@ export function generateBehaviorGuide(palace, chartResult) {
 
     // 3e: 輕微安全提示
     let safetyNote = '';
-    if (palace.tianGanHarm === '墓' || palace.diGanHarm === '墓') {
+    const ganHarms = [
+        palace.tianGanHarm,
+        palace.tianGanExtraHarm,
+        palace.diGanHarm,
+        palace.diGanExtraHarm,
+    ];
+    if (ganHarms.some(harm => harm && harm.includes('墓'))) {
         safetyNote = '此宮有入墓跡象，行為動作宜更加專注用心。';
     }
 

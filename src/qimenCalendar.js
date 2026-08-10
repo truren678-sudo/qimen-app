@@ -1,4 +1,4 @@
-import { calculateQimen, getSiZhu, TIAN_GAN, DI_ZHI } from './qimen';
+import { calculateQimen, TIAN_GAN, DI_ZHI } from './qimen';
 
 // 五行生剋關係定義
 // 金(0), 水(1), 木(2), 火(3), 土(4)
@@ -93,13 +93,18 @@ export function checkAuspiciousDirection(palace, chartResult) {
         }
     }
 
-    // 4. 天干擊刑
+    // 4. 天地盤主干與寄干擊刑
     if (palace.tianGanHarm && palace.tianGanHarm.includes('刑')) {
         reasons.push('天干擊刑');
     }
-    // 地干擊刑也列入考慮
+    if (palace.tianGanExtraHarm && palace.tianGanExtraHarm.includes('刑')) {
+        reasons.push('天干寄干擊刑');
+    }
     if (palace.diGanHarm && palace.diGanHarm.includes('刑')) {
         reasons.push('地干擊刑');
+    }
+    if (palace.diGanExtraHarm && palace.diGanExtraHarm.includes('刑')) {
+        reasons.push('地干寄干擊刑');
     }
 
     // 5. 空亡

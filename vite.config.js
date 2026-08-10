@@ -6,11 +6,14 @@ import { fileURLToPath, URL } from 'node:url'
 
 const rootPath = fileURLToPath(new URL('.', import.meta.url))
 
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    VitePWA({
+export default defineConfig(({ mode }) => {
+  const isCapacitorBuild = mode === 'capacitor'
+
+  return {
+    plugins: [
+      react(),
+      tailwindcss(),
+      !isCapacitorBuild && VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: ['apple-touch-icon.png'],
@@ -18,6 +21,10 @@ export default defineConfig({
         name: '奇門遁甲(專業排盤)',
         short_name: '奇門排盤',
         description: '最完整的年月日時家及陰盤奇門遁甲系統',
+        id: '/qimen-app/',
+        start_url: '/qimen-app/',
+        scope: '/qimen-app/',
+        lang: 'zh-Hant',
         theme_color: '#eef1f5',
         background_color: '#eef1f5',
         display: 'standalone',
@@ -35,15 +42,17 @@ export default defineConfig({
           }
         ]
       }
-    })
-  ],
-  base: '/qimen-app/',
-  build: {
-    rollupOptions: {
-      input: {
-        main: `${rootPath}index.html`,
-        userApp: `${rootPath}user-app.html`,
+      })
+    ].filter(Boolean),
+    // GitHub Pages 需要專案子路徑；Capacitor WebView 則從內嵌根目錄載入。
+    base: isCapacitorBuild ? './' : '/qimen-app/',
+    build: {
+      rollupOptions: {
+        input: {
+          main: `${rootPath}index.html`,
+          userApp: `${rootPath}user-app.html`,
+        },
       },
     },
-  },
+  }
 })

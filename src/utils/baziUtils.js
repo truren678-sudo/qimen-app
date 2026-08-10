@@ -10,7 +10,6 @@ import { Solar, Lunar } from 'lunar-javascript';
  */
 export function findSolarFromBazi(yearGz, monthGz, dayGz, hourGz) {
     let results = [];
-    const currentYear = new Date().getFullYear();
     // 搜尋過去 ~100 年到未來 ~20 年 (涵蓋兩個甲子)
     const startYear = 1801;
     const endYear = 2099;
@@ -26,14 +25,21 @@ export function findSolarFromBazi(yearGz, monthGz, dayGz, hourGz) {
                 
                 if (bazi.getYear() === yearGz && bazi.getMonth() === monthGz && bazi.getDay() === dayGz) {
                     // 找到符合的年月日，檢查時辰
-                    // 檢查 0-23 時
-                    for (let h = 0; h < 24; h += 2) {
+                    // 每個時辰取一個代表時間，並額外檢查晚子時 23:00。
+                    const candidateHours = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 23];
+                    for (const h of candidateHours) {
                         let hourLunar = Solar.fromYmdHms(d.getYear(), d.getMonth(), d.getDay(), h, 0, 0).getLunar();
-                        if (hourLunar.getEightChar().getTime() === hourGz) {
+                        const hourBazi = hourLunar.getEightChar();
+                        if (
+                            hourBazi.getYear() === yearGz &&
+                            hourBazi.getMonth() === monthGz &&
+                            hourBazi.getDay() === dayGz &&
+                            hourBazi.getTime() === hourGz
+                        ) {
                             // 找到符合的時間！
                             // 通常時辰跨兩小時，我們取中間值或起始點，這裡取該時辰的起始 (例如子時取 0 點, 丑時取 2 點)
                             // 修正：夜子時與早子時可能跨日，但 lunar-javascript 會處理。
-                            results.push(new Date(d.getYear(), d.getMonth() - 1, d.getDay(), h, 30));
+                            results.push(new Date(d.getYear(), d.getMonth() - 1, d.getDay(), h, h === 23 ? 0 : 30));
                         }
                     }
                 }

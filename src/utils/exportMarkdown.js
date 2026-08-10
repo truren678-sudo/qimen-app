@@ -8,7 +8,6 @@ export function exportPalace(result, palaceNum) {
     if (!p) return '';
 
     const isMingPan = result.chartType === '命盤';
-    const isYinPan = result.chartType === '陰盤奇門';
 
     let md = `### 【${p.num}宮 ${p.name}】\n`;
     
@@ -87,7 +86,7 @@ export function exportPalace(result, palaceNum) {
             md += `- **大限**：${p.daXian.start} ~ ${p.daXian.end} 歲\n`;
         }
         if (p.liuNianAges && p.liuNianAges.length > 0) {
-            md += `- **流年歲數 (1~70歲)**：${p.liuNianAges.join('、')} 歲\n`;
+            md += `- **流年歲數**：${p.liuNianAges.join('、')} 歲\n`;
         }
     }
 
@@ -185,7 +184,9 @@ export function exportFullChart(result) {
                 const harms = [];
                 if (pal.doorHarm === '迫') harms.push('門迫');
                 if (pal.tianGanHarm) harms.push(pal.tianGanHarm);
+                if (pal.tianGanExtraHarm) harms.push(pal.tianGanExtraHarm);
                 if (pal.diGanHarm) harms.push(pal.diGanHarm);
+                if (pal.diGanExtraHarm) harms.push(pal.diGanExtraHarm);
                 if (kwStr.includes(`${pal.num}宮`)) harms.push('空亡');
                 if (maStr.includes(`${pal.num}宮`)) harms.push('驛馬');
                 const harmStr = harms.length > 0 ? harms.join('、') : '無';

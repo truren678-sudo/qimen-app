@@ -1,11 +1,14 @@
 /**
  * 行為風水指導 Modal
  */
-import React from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { generateBehaviorGuide } from '../utils/behaviorFengShui';
 import { BA_SHEN_DATA, JIU_XING_DATA, BA_MEN_DATA, TIAN_GAN_DATA } from '../utils/behaviorFengShuiData';
 
 export function BehaviorFengShuiModal({ palace, result, onClose }) {
+    const titleId = useId();
+    const dialogRef = useDialogFocus(onClose, Boolean(palace && result));
+
     if (!palace || !result) return null;
 
     const guide = generateBehaviorGuide(palace, result);
@@ -14,6 +17,11 @@ export function BehaviorFengShuiModal({ palace, result, onClose }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
             <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
                 className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
             >
@@ -22,12 +30,13 @@ export function BehaviorFengShuiModal({ palace, result, onClose }) {
 
                 {/* 標題列 */}
                 <div className="flex items-center justify-between px-5 pt-4 pb-2">
-                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <h2 id={titleId} className="text-lg font-bold text-gray-800 flex items-center gap-2">
                         <span className="text-2xl">🌀</span>
                         行為風水指導
                     </h2>
                     <button
                         onClick={onClose}
+                        aria-label="關閉行為風水指導"
                         className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
                     >
                         ×
@@ -68,8 +77,8 @@ export function BehaviorFengShuiModal({ palace, result, onClose }) {
                                     <div className="text-xs text-amber-600">{guide.palaceWuxing}</div>
                                 </div>
                                 <div className="flex-1 text-xs text-gray-600 space-y-0.5">
-                                    <div>八神：<b>{guide.symbols.shen}</b>　九星：<b>{guide.symbols.star}</b>　八門：<b>{guide.symbols.door}</b></div>
-                                    <div>天盤干：<b>{guide.symbols.tianGan}</b>　地盤干：<b>{guide.symbols.diGan}</b></div>
+                                    <div>八神：<b>{guide.symbols.shen}</b> / 九星：<b>{guide.symbols.star}</b> / 八門：<b>{guide.symbols.door}</b></div>
+                                    <div>天盤干：<b>{guide.symbols.tianGan}</b> / 地盤干：<b>{guide.symbols.diGan}</b></div>
                                 </div>
                             </div>
 
@@ -191,6 +200,8 @@ function InfoCard({ icon, label, value }) {
  * 符號象徵知識小卡 Modal
  */
 export function SymbolKnowledgeModal({ onClose }) {
+    const titleId = useId();
+    const dialogRef = useDialogFocus(onClose);
     const sections = [
         {
             title: '八神象徵',
@@ -229,17 +240,23 @@ export function SymbolKnowledgeModal({ onClose }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
             <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
                 className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="h-2 rounded-t-2xl bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500" />
                 <div className="flex items-center justify-between px-5 pt-4 pb-2 sticky top-0 bg-white z-10 border-b border-gray-100">
-                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <h2 id={titleId} className="text-lg font-bold text-gray-800 flex items-center gap-2">
                         <span className="text-2xl">📖</span>
                         奇門符號象徵速查
                     </h2>
                     <button
                         onClick={onClose}
+                        aria-label="關閉奇門符號象徵速查"
                         className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
                     >
                         ×
@@ -282,4 +299,53 @@ export function SymbolKnowledgeModal({ onClose }) {
             </div>
         </div>
     );
+}
+
+function useDialogFocus(onClose, active = true) {
+    const dialogRef = useRef(null);
+
+    useEffect(() => {
+        if (!active) return undefined;
+
+        const previousActiveElement = document.activeElement;
+        const dialog = dialogRef.current;
+        const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = () => Array.from(dialog?.querySelectorAll(focusableSelector) || []);
+
+        (focusable()[0] || dialog)?.focus();
+
+        const handleKeyDown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                onClose();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+
+            const items = focusable();
+            if (items.length === 0) {
+                event.preventDefault();
+                dialog?.focus();
+                return;
+            }
+
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            previousActiveElement?.focus?.();
+        };
+    }, [active, onClose]);
+
+    return dialogRef;
 }

@@ -19,7 +19,7 @@ const OPPOSITE_PALACE = {
 };
 
 function getYearFromAge(facts, nominalAge) {
-    return facts.profile.solar.year + nominalAge - 1;
+    return (facts.profile.civilBirthDate?.year || facts.profile.solar.year) + nominalAge - 1;
 }
 
 function buildTimingAdvice(yearPalace, oppositePalace, relationInfo) {

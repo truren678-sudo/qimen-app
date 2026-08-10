@@ -6,6 +6,22 @@ import { QimenCalendarView } from './components/QimenCalendarView';
 import { SymbolKnowledgeModal } from './components/BehaviorFengShuiModal';
 import { calculateQimen } from './qimen';
 import { exportFullChart } from './utils/exportMarkdown';
+import { addCivilMinutes, isValidCivilTime, isValidGregorianDate } from './utils/civilDateTime';
+
+function isValidSavedRecord(record) {
+  const params = record?.rawTimeParams || record?.timeParams;
+  const normalized = record?.normalizedTimeParams || record?.timeParams;
+  return Boolean(
+    record &&
+    Number.isFinite(Number(record.id)) &&
+    params &&
+    isValidGregorianDate(params) &&
+    isValidCivilTime(params) &&
+    normalized &&
+    isValidGregorianDate(normalized) &&
+    isValidCivilTime(normalized)
+  );
+}
 
 function App() {
   const initDate = new Date();
@@ -22,27 +38,43 @@ function App() {
   const [viewMode, setViewMode] = useState('chart'); // 'chart' | 'calendar'
   const [mobileTab, setMobileTab] = useState('setting'); // 'setting' | 'result'
   const [result, setResult] = useState(null);
+  const [calculationSnapshot, setCalculationSnapshot] = useState(null);
+  const [loadedInputSettings, setLoadedInputSettings] = useState(null);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
   const [showSymbolModal, setShowSymbolModal] = useState(false);
 
   const [remark, setRemark] = useState('');
   const [savedRecords, setSavedRecords] = useState(() => {
     try {
       const saved = localStorage.getItem('qimen_saved_charts');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.filter(isValidSavedRecord) : [];
     } catch { return []; }
   });
 
-  const handleCalculate = (params = timeParams) => {
+  const handleCalculate = (params = timeParams, calculationOptions = {}) => {
+    const selectedChartType = calculationOptions.chartType || chartType;
+    const selectedGender = calculationOptions.gender || gender;
     try {
       setError(null);
-      const res = calculateQimen(params.year, params.month, params.day, params.hour, params.minute, { chartType, gender });
+      setNotice(null);
+      const res = calculateQimen(params.year, params.month, params.day, params.hour, params.minute, {
+        chartType: selectedChartType,
+        gender: selectedGender,
+      });
       if (!res) {
         setError('排盤計算失敗，請確認輸入時間是否正確。');
         return;
       }
       setResult(res);
-      setTimeParams(params);
+      setCalculationSnapshot({
+        rawTimeParams: { ...(calculationOptions.rawTimeParams || params) },
+        normalizedTimeParams: { ...params },
+        inputSettings: calculationOptions.inputSettings || null,
+        chartType: selectedChartType,
+        gender: selectedGender,
+      });
       setMobileTab('result'); // 排盤後自動切換到結果頁
     } catch (e) {
       console.error(e);
@@ -51,62 +83,102 @@ function App() {
   };
 
   const handleTimeShift = (type) => {
-    if (!result) return;
-    const d = new Date(timeParams.year, timeParams.month - 1, timeParams.day, timeParams.hour, timeParams.minute);
-    if (type === '上日') d.setDate(d.getDate() - 1);
-    if (type === '次日') d.setDate(d.getDate() + 1);
-    if (type === '現時') d.setTime(new Date().getTime());
-    if (type === '上時') d.setHours(d.getHours() - 2);
-    if (type === '下時') d.setHours(d.getHours() + 2);
+    if (!result || result.chartType === '命盤') return;
 
-    const newParams = {
-      year: d.getFullYear(),
-      month: d.getMonth() + 1,
-      day: d.getDate(),
-      hour: d.getHours(),
-      minute: d.getMinutes()
+    let newParams;
+    if (type === '現時') {
+      const now = new Date();
+      newParams = {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        day: now.getDate(),
+        hour: now.getHours(),
+        minute: now.getMinutes(),
+      };
+    } else {
+      const shiftMinutes = {
+        上日: -24 * 60,
+        次日: 24 * 60,
+        上時: -2 * 60,
+        下時: 2 * 60,
+      }[type];
+      if (shiftMinutes == null) return;
+      newParams = addCivilMinutes(calculationSnapshot?.rawTimeParams || timeParams, shiftMinutes);
+    }
+
+    const snapshotOptions = {
+      chartType: calculationSnapshot?.chartType || chartType,
+      gender: calculationSnapshot?.gender || gender,
     };
     setTimeParams(newParams);
-    handleCalculate(newParams);
-  };
-
-  const handleClear = () => {
-    setResult(null);
-    setError(null);
+    setChartType(snapshotOptions.chartType);
+    setGender(snapshotOptions.gender);
+    handleCalculate(newParams, {
+      ...snapshotOptions,
+      rawTimeParams: newParams,
+      inputSettings: null,
+    });
   };
 
   const handleSaveRecord = () => {
-    if (!result) {
+    if (!result || !calculationSnapshot) {
       alert('請先排盤再進行儲存！');
       return;
     }
+    const snapshot = calculationSnapshot;
     const pad = n => String(n).padStart(2, '0');
-    const defaultRemark = `${result.solar.year}/${pad(result.solar.month)}/${pad(result.solar.day)} ${pad(result.solar.hour)}:${pad(result.solar.minute)} ${chartType === '命盤' ? `命盤(${gender})` : '時盤'}`;
+    const defaultRemark = `${result.solar.year}/${pad(result.solar.month)}/${pad(result.solar.day)} ${pad(result.solar.hour)}:${pad(result.solar.minute)} ${snapshot.chartType === '命盤' ? `命盤(${snapshot.gender})` : '時盤'}`;
     const newRecord = {
       id: Date.now(),
-      timeParams,
-      chartType,
-      gender,
+      schemaVersion: 3,
+      // timeParams 保留作舊版讀取相容；新格式明確拆分原始與正規化時間。
+      timeParams: snapshot.rawTimeParams,
+      rawTimeParams: snapshot.rawTimeParams,
+      normalizedTimeParams: snapshot.normalizedTimeParams,
+      inputSettings: snapshot.inputSettings,
+      chartType: snapshot.chartType,
+      gender: snapshot.gender,
       remark: remark || defaultRemark,
     };
     const updated = [newRecord, ...savedRecords];
-    setSavedRecords(updated);
-    localStorage.setItem('qimen_saved_charts', JSON.stringify(updated));
-    setRemark('');
-    alert('盤局已儲存成功！');
+    try {
+      localStorage.setItem('qimen_saved_charts', JSON.stringify(updated));
+      setSavedRecords(updated);
+      setRemark('');
+      setNotice('盤局已儲存成功！');
+    } catch {
+      setError('無法寫入本機儲存空間，請確認瀏覽器儲存權限或清理舊紀錄。');
+    }
   };
 
   const handleLoadRecord = (idStr) => {
     const id = Number(idStr);
     const record = savedRecords.find(r => r.id === id);
     if (!record) return;
-    setTimeParams(record.timeParams);
+    const rawTimeParams = record.rawTimeParams || record.timeParams;
+    const normalizedTimeParams = record.normalizedTimeParams || record.timeParams;
+    setTimeParams(rawTimeParams);
+    setLoadedInputSettings({
+      requestId: `${record.id}-${Date.now()}`,
+      settings: record.inputSettings || null,
+    });
     setChartType(record.chartType || '時家置閏');
     if (record.gender) setGender(record.gender);
     try {
       setError(null);
-      const res = calculateQimen(record.timeParams.year, record.timeParams.month, record.timeParams.day, record.timeParams.hour, record.timeParams.minute, { chartType: record.chartType || '時家置閏', gender: record.gender || '男' });
-      if (res) { setResult(res); setMobileTab('result'); }
+      setNotice(null);
+      const res = calculateQimen(normalizedTimeParams.year, normalizedTimeParams.month, normalizedTimeParams.day, normalizedTimeParams.hour, normalizedTimeParams.minute, { chartType: record.chartType || '時家置閏', gender: record.gender || '男' });
+      if (res) {
+        setResult(res);
+        setCalculationSnapshot({
+          rawTimeParams: { ...rawTimeParams },
+          normalizedTimeParams: { ...normalizedTimeParams },
+          inputSettings: record.inputSettings || null,
+          chartType: record.chartType || '時家置閏',
+          gender: record.gender || '男',
+        });
+        setMobileTab('result');
+      }
     } catch (e) {
       console.error(e);
       setError('載入舊盤局發生錯誤');
@@ -121,8 +193,12 @@ function App() {
     if (window.confirm('確定要刪除此盤局紀錄嗎？')) {
       const id = Number(idStr);
       const updated = savedRecords.filter(r => r.id !== id);
-      setSavedRecords(updated);
-      localStorage.setItem('qimen_saved_charts', JSON.stringify(updated));
+      try {
+        localStorage.setItem('qimen_saved_charts', JSON.stringify(updated));
+        setSavedRecords(updated);
+      } catch {
+        setError('無法更新本機儲存空間，紀錄尚未刪除。');
+      }
     }
   };
 
@@ -179,15 +255,17 @@ function App() {
         {/* 底部按鈕 */}
         {result && (
           <div className="mt-8 w-full max-w-[500px] mx-auto flex flex-col items-center">
-            <div className="flex justify-between w-full px-4 mb-6">
-              {['上日', '次日', '現時', '上時', '下時'].map(btn => (
-                <button key={btn}
-                  onClick={() => handleTimeShift(btn)}
-                  className="text-sm font-bold text-[#4395CA] hover:text-[#347BA9] transition-colors px-2 py-1">
-                  {btn}
-                </button>
-              ))}
-            </div>
+            {result.chartType !== '命盤' && (
+              <div className="flex justify-between w-full px-4 mb-6">
+                {['上日', '次日', '現時', '上時', '下時'].map(btn => (
+                  <button key={btn}
+                    onClick={() => handleTimeShift(btn)}
+                    className="text-sm font-bold text-[#4395CA] hover:text-[#347BA9] transition-colors px-2 py-1">
+                    {btn}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="w-full">
               <h3 className="text-xs font-bold text-gray-700 mb-2 tracking-wider">盤局備註說明：</h3>
@@ -209,6 +287,7 @@ function App() {
   // ── Sidebar 包裝（共用元素）
   const sidebarAreaNode = (
     <Sidebar
+      key={loadedInputSettings?.requestId || 'initial-sidebar'}
       timeParams={timeParams}
       setTimeParams={setTimeParams}
       chartType={chartType}
@@ -216,29 +295,31 @@ function App() {
       gender={gender}
       setGender={setGender}
       onCalculate={handleCalculate}
-      onClear={handleClear}
       savedRecords={savedRecords}
       onSaveRecord={handleSaveRecord}
       onLoadRecord={handleLoadRecord}
       onDeleteRecord={handleDeleteRecord}
+      loadedInputSettings={loadedInputSettings}
     />
   );
 
   return (
   <>
-    <div className="flex flex-col h-screen bg-[#eef1f5] font-sans overflow-hidden w-full">
+    <div className="flex flex-col h-dvh bg-[#eef1f5] font-sans overflow-hidden w-full">
 
       {/* ── 頂部導覽列（奇門排盤 / 奇門曆） ── */}
       <div className="flex justify-center items-center bg-white border-b border-gray-300 py-2 shadow-sm z-20 shrink-0 w-full">
         <div className="flex bg-gray-100 rounded-full p-1 border border-gray-200">
           <button
             onClick={() => setViewMode('calendar')}
+            aria-pressed={viewMode === 'calendar'}
             className={`px-6 py-1.5 rounded-full text-[14px] font-bold tracking-widest transition-colors ${viewMode === 'calendar' ? 'bg-white text-[#8b5a7a] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
             奇門曆
           </button>
           <button
             onClick={() => setViewMode('chart')}
+            aria-pressed={viewMode === 'chart'}
             className={`px-6 py-1.5 rounded-full text-[14px] font-bold tracking-widest transition-colors ${viewMode === 'chart' ? 'bg-white text-[#8b5a7a] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
             奇門排盤
@@ -249,32 +330,22 @@ function App() {
       {viewMode === 'calendar' ? (
         <QimenCalendarView />
       ) : (
-        <>
-          {/* ── 桌面版：左右並排（md 以上） ── */}
-          <div className="hidden md:flex flex-1 overflow-hidden w-full">
-            {sidebarAreaNode}
-            {resultAreaNode}
+        <div className="flex flex-1 min-h-0 flex-col overflow-hidden w-full">
+          {/* 單一元件樹：桌面並排，手機以分頁控制顯示。 */}
+          <div className="flex flex-1 min-h-0 overflow-hidden w-full">
+            <div className={`${mobileTab === 'setting' ? 'block' : 'hidden'} md:block h-full w-full md:w-auto overflow-hidden shrink-0`}>
+              {sidebarAreaNode}
+            </div>
+            <div className={`${mobileTab === 'result' ? 'flex' : 'hidden'} md:flex flex-1 h-full min-w-0 overflow-hidden w-full`}>
+              {resultAreaNode}
+            </div>
           </div>
 
-          {/* ── 手機版：分頁切換 ── */}
-          <div className="flex md:hidden flex-1 flex-col overflow-hidden w-full">
-            {/* 內容區 */}
-            <div className="flex-1 overflow-hidden w-full">
-              {mobileTab === 'setting' ? (
-                <div className="h-full overflow-y-auto w-full">
-                  {sidebarAreaNode}
-                </div>
-              ) : (
-                <div className="h-full overflow-y-auto w-full">
-                  {resultAreaNode}
-                </div>
-              )}
-            </div>
-
-            {/* 底部分頁欄 */}
-            <div className="shrink-0 flex bg-white border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+          {/* 手機版底部分頁欄 */}
+          <div className="md:hidden shrink-0 flex bg-white border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)]">
               <button
                 onClick={() => setMobileTab('setting')}
+                aria-pressed={mobileTab === 'setting'}
                 className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${mobileTab === 'setting' ? 'text-[#4395CA]' : 'text-gray-400'}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -284,6 +355,7 @@ function App() {
               </button>
               <button
                 onClick={() => setMobileTab('result')}
+                aria-pressed={mobileTab === 'result'}
                 className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${mobileTab === 'result' ? 'text-[#4395CA]' : 'text-gray-400'}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -291,9 +363,14 @@ function App() {
                 </svg>
                 <span className="text-[11px] font-bold">排盤結果 {result && '✓'}</span>
               </button>
-            </div>
           </div>
-        </>
+        </div>
+      )}
+
+      {notice && (
+        <div className="mb-4 bg-green-50 border border-green-200 rounded-sm px-4 py-2 text-sm text-green-700 shrink-0" role="status">
+          ✓ {notice}
+        </div>
       )}
     </div>
 

@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getDailyAuspiciousData } from '../qimenCalendar';
 
 const CHINESE_WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 const DOOR_COLORS = {
-    '休門': 'text-[#00BFFF]', // 水藍色 (DeepSkyBlue)
-    '生門': 'text-[#CDAA7D]', // 土黃色 (BurlyWood)
-    '開門': 'text-[#FFD700]', // 金色 (Gold)
-    '景門': 'text-red-500'
+    '休門': 'text-sky-700',
+    '生門': 'text-amber-800',
+    '開門': 'text-yellow-700',
+    '景門': 'text-red-700'
 };
 const DOOR_LABELS = {
     '全': '全部',
@@ -287,15 +287,12 @@ export function QimenCalendarView() {
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div>
                         <button
                             onClick={() => { setFilterDoor('全'); setFilterDir('所有方位'); setFilterTime('全天'); }}
-                            className="py-2 text-sm text-[#4395CA] border border-[#4395CA] rounded-md hover:bg-[#4395CA]/10 font-bold transition-colors"
+                            className="w-full py-2 text-sm text-[#4395CA] border border-[#4395CA] rounded-md hover:bg-[#4395CA]/10 font-bold transition-colors"
                         >
                             重置條件
-                        </button>
-                        <button className="py-2 text-sm text-white bg-[#4395CA] rounded-md hover:bg-[#347BA9] font-bold transition-colors shadow">
-                            確定
                         </button>
                     </div>
                 </div>
