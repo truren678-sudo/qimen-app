@@ -237,12 +237,23 @@ export function exportFullChart(result) {
         md += `- **起局**：${yinYang}${juNum}局\n`;
         md += `- **排盤系統**：${chartType}\n`;
         md += `- **公曆時間**：${solar.year}年${solar.month}月${solar.day}日 ${pad(solar.hour)}:${pad(solar.minute)}\n`;
-        
+
+        const { lunar, siZhu } = result;
+        if (lunar) {
+            md += `- **農曆時間**：${lunar.year}年${lunar.isLeap ? '閏' : ''}${lunar.month}月${lunar.day}日 ${solar.hour}時\n`;
+        }
+        if (siZhu) {
+            md += `- **天干地支**：${siZhu.yearGan}${siZhu.yearZhi}年 ${siZhu.monthGan}${siZhu.monthZhi}月 ${siZhu.dayGan}${siZhu.dayZhi}日 ${siZhu.hourGan}${siZhu.hourZhi}時\n`;
+        }
+
         if (jieqiName && yuanName) {
             md += `- **節氣**：${jieqiName} · ${yuanName}\n`;
         }
 
         md += `- **旬首**：${xunShou}\n`;
+        if (result.fuTou) {
+            md += `- **符頭**：${result.fuTou}\n`;
+        }
         md += `- **空亡**：${kongWang || '無'}\n`;
         md += `- **驛馬**：${yiMa || '無'}\n`;
         

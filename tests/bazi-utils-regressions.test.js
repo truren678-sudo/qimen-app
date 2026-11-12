@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Solar } from 'lunar-javascript';
 import { findSolarFromBazi } from '../src/utils/baziUtils';
+import { getQimenEightChar } from '../src/qimen';
 
 describe('四柱反查', () => {
   it('能找回晚子時 23:00 的原始日期', () => {
-    const eightChar = Solar.fromYmdHms(1990, 1, 15, 23, 0, 0).getLunar().getEightChar();
+    const eightChar = getQimenEightChar(Solar.fromYmdHms(1990, 1, 15, 23, 0, 0));
     const matches = findSolarFromBazi(
       eightChar.getYear(),
       eightChar.getMonth(),

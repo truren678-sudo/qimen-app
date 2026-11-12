@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Solar } from 'lunar-javascript';
 import { CHINA_PROVINCES, OVERSEAS_COUNTRIES, fmtOffset, calcSolarTimeCorrectionMinutes } from '../data/locationData';
 import { findSolarFromBazi } from '../utils/baziUtils';
+import { getQimenEightChar } from '../qimen';
 import { addCivilMinutes, daysInGregorianMonth } from '../utils/civilDateTime';
 import { daysInLunarMonth, getLunarMonthsOfYear, lunarToSolarParts } from '../utils/lunarDate';
 
@@ -82,8 +83,7 @@ export function Sidebar({ timeParams, setTimeParams, chartType, setChartType, ge
     };
 
     const initBaziFromSolar = () => {
-        const d = Solar.fromYmdHms(year, month, day, hour, minute, 0).getLunar();
-        const bazi = d.getEightChar();
+        const bazi = getQimenEightChar(Solar.fromYmdHms(year, month, day, hour, minute, 0));
         setBaziYg(bazi.getYearGan()); setBaziYz(bazi.getYearZhi());
         setBaziMg(bazi.getMonthGan()); setBaziMz(bazi.getMonthZhi());
         setBaziDg(bazi.getDayGan()); setBaziDz(bazi.getDayZhi());
