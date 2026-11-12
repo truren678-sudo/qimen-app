@@ -279,6 +279,17 @@ function buildDiPan(juNum, isYin) {
     return diPan;
 }
 
+// 引干特例：指定天干入中宮，依地盤三奇六儀順序、九宮陽順陰逆飛佈
+function buildYinGanFeiBu(entryStem, isYin) {
+    const seq = isYin ? [5, 4, 3, 2, 1, 9, 8, 7, 6] : [5, 6, 7, 8, 9, 1, 2, 3, 4];
+    const startI = LIU_YI.indexOf(entryStem);
+    const pan = {};
+    seq.forEach((palNum, i) => {
+        pan[palNum] = LIU_YI[(startI + i) % 9];
+    });
+    return pan;
+}
+
 // ── 3. 旬首 ──
 function getXunInfo(hourGan, hourZhi, diPan) {
     const tIdx = gzIdx(hourGan, hourZhi);
@@ -288,7 +299,8 @@ function getXunInfo(hourGan, hourZhi, diPan) {
     const xunHeadZhi = DI_ZHI[(xunNo * 10) % 12];
     return {
         xunNo, xunHeadGan, xunPalNum, xunHeadZhi,
-        zhiFuXing: PAL_STAR[xunPalNum] || '天蓬',
+        // 符頭入中宮時借坤二宮天芮為值符星（與值使借死門同理）
+        zhiFuXing: (xunPalNum === 5 ? '天芮' : PAL_STAR[xunPalNum]) || '天蓬',
         zhiShiMen: (xunPalNum === 5 ? '死門' : PAL_DOOR[xunPalNum]) || '休門',
     };
 }
@@ -425,9 +437,25 @@ export function getYinPanJu(solar, siZhu) {
     let juNum = sum % 9;
     if (juNum === 0) juNum = 9;
 
-    const jqInfo = getJieQiInfo(solar);
-    const isYin = jqInfo.isYin;
-    return { juNum, isYin, yuanName: '陰盤' };
+    // 陰盤不置閏：直接以實際交節時刻判斷，冬至後陽遁、夏至後陰遁
+    const jieqiName = getActualJieQiName(solar);
+    const isYin = YIN_DUN_JIEQI.includes(jieqiName);
+    return { juNum, isYin, yuanName: '陰盤', jieqiName };
+}
+
+const YIN_DUN_JIEQI = ['夏至', '小暑', '大暑', '立秋', '處暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪'];
+const SIMPLIFIED_JIEQI = { '处暑': '處暑', '惊蛰': '驚蟄', '谷雨': '穀雨', '小满': '小滿', '芒种': '芒種' };
+
+function getActualJieQiName(solar) {
+    const name = solar.getLunar().getPrevJieQi(false).getName();
+    return SIMPLIFIED_JIEQI[name] || name;
+}
+
+/** 奇門以晚子時（23:00 起）換日，日柱取隔天 */
+export function getQimenEightChar(solar) {
+    const bazi = solar.getLunar().getEightChar();
+    bazi.setSect(1);
+    return bazi;
 }
 
 // ===== 四柱計算 =====
@@ -437,8 +465,9 @@ export function getSiZhu(year, month, day, hour, minute) {
 
     try {
         const solar = Solar.fromYmdHms(year, month, day, hour, minute, 0);
-        const lunar = solar.getLunar();
-        const bazi = lunar.getEightChar();
+        // 晚子時（23:00 起）農曆日與日柱一併換到隔天
+        const lunar = hour >= 23 ? solar.next(1).getLunar() : solar.getLunar();
+        const bazi = getQimenEightChar(solar);
         return {
             yearGan: bazi.getYearGan(), yearZhi: bazi.getYearZhi(),
             monthGan: bazi.getMonthGan(), monthZhi: bazi.getMonthZhi(),
@@ -489,7 +518,7 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         targetGan = chartSiZhu.dayGan; targetZhi = chartSiZhu.dayZhi; doorTargetZhi = chartSiZhu.dayZhi;
     } else if (chartType === '陰盤奇門') {
         const yinJu = getYinPanJu(solar, siZhu);
-        juNum = yinJu.juNum; isYin = yinJu.isYin; yuanName = yinJu.yuanName; jieqiName = jqInfoOrig.jieqiName;
+        juNum = yinJu.juNum; isYin = yinJu.isYin; yuanName = yinJu.yuanName; jieqiName = yinJu.jieqiName;
         targetGan = siZhu.hourGan; targetZhi = siZhu.hourZhi; doorTargetZhi = siZhu.hourZhi;
     } else { // 時家置閏, 命盤
         juNum = jqInfoOrig.juNum; isYin = jqInfoOrig.isYin;
@@ -584,6 +613,24 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         const srcIdx = (targetIdx + shift) % 8;
         return { ...p, yinGan: tpArr[srcIdx] };
     });
+
+    // 引干特例：值使宮的天盤干、地盤干、引干三者相同（伏吟）時，引干改為入中飛佈
+    if (!isDayQimen) {
+        const zsPal = palaces.find(p => p.num === zhiShiPalNum);
+        const tianFull = zsPal ? zsPal.tianGan + (zsPal.tianGanExtra || '') : '';
+        const diFull = zsPal ? zsPal.diGan + (zsPal.diGanExtra || '') : '';
+        if (zsPal && tianFull && tianFull === diFull && zsPal.yinGan === tianFull) {
+            // 再特例：時干本身為中宮寄干時，入中後會重複跳回原處，改用原宮位天盤干入中
+            const entryStem = (targetStem === diPan[5] && zsPal.tianGan !== targetStem) ? zsPal.tianGan : targetStem;
+            const yinGanPan = buildYinGanFeiBu(entryStem, isYin);
+            palaces = palaces.map(p => {
+                if (p.num === 5) return { ...p, yinGan: '' };
+                // 中宮引干寄坤二宮
+                const yinGan = p.num === 2 ? yinGanPan[2] + yinGanPan[5] : yinGanPan[p.num];
+                return { ...p, yinGan };
+            });
+        }
+    }
 
     const targetZhiStr = chartType === '年家奇門' ? chartSiZhu.yearZhi : chartType === '月家奇門' ? chartSiZhu.monthZhi : chartType === '日家奇門' ? chartSiZhu.dayZhi : chartSiZhu.hourZhi;
     const xunName = dayQimenXun || (xunInfo.xunNo !== undefined ? XUN_NAMES[xunInfo.xunNo] : '');
