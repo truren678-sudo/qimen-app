@@ -77,11 +77,11 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
                     </div>
                 )}
                 {isMingPan && <span className="text-[24px] font-bold text-transparent bg-clip-text bg-gradient-to-b from-purple-800 to-indigo-800 opacity-60 font-serif">大 限</span>}
-                <span className="absolute bottom-2 text-[11px] text-gray-400">天禽(寄坤二)</span>
+                <span className="absolute bottom-2 right-2 text-[11px] text-gray-400">天禽(寄坤二)</span>
 
                 {/* 單宮拷貝按鈕 */}
                 {onCopy && (
-                    <button type="button" onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 right-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
+                    <button type="button" onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 left-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
                         📋
                     </button>
                 )}
@@ -187,7 +187,7 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
 
             {/* 單宮拷貝按鈕 */}
             {onCopy && (
-                <button type="button" onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 right-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity z-20" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
+                <button type="button" onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 left-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity z-20" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
                     📋
                 </button>
             )}
@@ -279,7 +279,8 @@ export function NineGrid({ result }) {
                                 isMa={maPal === p.num}
                                 isDayQimen={result.isDayQimen}
                                 isMingPan={isMingPan}
-                                controlZoom={scale < 1 ? 1 / scale : 1}
+                                // 縮小時放大複製鈕以利點擊，但上限 1.375 倍，避免蓋到左下角旁的八門
+                                controlZoom={scale < 1 ? Math.min(1 / scale, 1.375) : 1}
                                 onCopy={() => {
                                     const md = exportPalace(result, p.num);
                                     if(md) navigator.clipboard.writeText(md).then(() => alert(`已複製 ${p.name}宮 (\`${p.num}\`) 的 Markdown！`));
