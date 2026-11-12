@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateQimen, getSiZhu } from '../src/qimen';
+import { calculateQimen, findStemPalace, getSiZhu } from '../src/qimen';
 
 // 範例盤取自子奇老師《陰盤奇門》二階 2-1 講義
 function yinGanByPalace(result) {
@@ -106,5 +106,19 @@ describe('群組案例：網站截圖逐宮比對', () => {
     const r = calculateQimen(2026, 11, 2, 16, 14, { chartType: '陰盤奇門' });
     expect(pick(r)[2]).toBe('值符天芮死門 庚乙/庚乙 引癸庚');
     expect(pick(r)[6]).toBe('九地天心開門 丙/丙 引己');
+  });
+});
+
+describe('日干、時干落宮標示', () => {
+  it('依天盤干找宮位（2026/6/26 23:25：日干壬在坤2、時干庚在艮8）', () => {
+    const r = calculateQimen(2026, 6, 26, 23, 25, { chartType: '陰盤奇門' });
+    expect(findStemPalace(r, r.siZhu.dayGan, r.siZhu.dayZhi)).toBe(2);
+    expect(findStemPalace(r, r.siZhu.hourGan, r.siZhu.hourZhi)).toBe(8);
+  });
+
+  it('甲遁於旬首干下（甲申時找庚，庚寄中宮時隨天芮落坤2）', () => {
+    const r = calculateQimen(2026, 11, 2, 16, 14, { chartType: '陰盤奇門' });
+    expect(r.siZhu.hourGan + r.siZhu.hourZhi).toBe('甲申');
+    expect(findStemPalace(r, '甲', '申')).toBe(2);
   });
 });

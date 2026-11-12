@@ -480,6 +480,16 @@ export function getSiZhu(year, month, day, hour, minute) {
     } catch { return null; }
 }
 
+/**
+ * 找出某干支的天干落在天盤哪一宮（甲遁於旬首干下）。找不到回傳 null。
+ */
+export function findStemPalace(result, gan, zhi) {
+    if (!result?.palaces || !gan) return null;
+    const stem = gan === '甲' ? ['戊', '己', '庚', '辛', '壬', '癸'][Math.floor(gzIdx(gan, zhi) / 10)] : gan;
+    const palace = result.palaces.find(p => p.num !== 5 && (p.tianGan === stem || p.tianGanExtra === stem));
+    return palace ? palace.num : null;
+}
+
 const XUN_NAMES = ['甲子', '甲戌', '甲申', '甲午', '甲辰', '甲寅'];
 const XUN_KONG = { '甲子': '戌亥', '甲戌': '申酉', '甲申': '午未', '甲午': '辰巳', '甲辰': '寅卯', '甲寅': '子丑' };
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { BoardInfo } from './components/BoardInfo';
 import { NineGrid } from './components/NineGrid';
+import { showToast } from './utils/toast';
 import { QimenCalendarView } from './components/QimenCalendarView';
 import { SymbolKnowledgeModal } from './components/BehaviorFengShuiModal';
 import { calculateQimen } from './qimen';
@@ -214,7 +215,9 @@ function App() {
               <button
                 onClick={() => {
                   const md = exportFullChart(result);
-                  navigator.clipboard.writeText(md).then(() => alert('全盤 Markdown 複製成功！'));
+                  navigator.clipboard.writeText(md)
+                    .then(() => showToast('已複製全盤 Markdown'))
+                    .catch(() => showToast('複製失敗，請再試一次'));
                 }}
                 className="text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer"
                 title="複製為 Markdown 格式以提供給 AI"
@@ -247,7 +250,7 @@ function App() {
 
         {/* 九宮格 */}
         {result && (
-          <div className="mt-4 w-full flex justify-center px-1 md:px-0 py-2">
+          <div className="mt-0 md:mt-4 w-full flex justify-center px-1 md:px-0 py-0 md:py-2">
             <NineGrid result={result} />
           </div>
         )}
@@ -269,7 +272,11 @@ function App() {
 
             <div className="w-full">
               <h3 className="text-xs font-bold text-gray-700 mb-2 tracking-wider">盤局備註說明：</h3>
-              <p className="text-xs text-gray-600 mb-2">奇門四害: <span className="text-[#B8860B] font-bold">入墓(墓)</span>、<span className="text-purple-600 font-bold">擊刑(刑)</span>、<span className="text-red-500 font-bold">門迫(迫)</span>、<span className="text-blue-600 font-bold">擊刑+入墓(刑)</span></p>
+              <p className="text-xs text-gray-600 mb-2">奇門四害: <span className="text-[#B8860B] font-bold">入墓(墓)</span>、<span className="text-red-600 font-bold">擊刑(刑)</span>、<span className="text-red-600 font-bold">門迫(迫)</span>、<span className="text-red-600 font-bold">擊刑+入墓(刑墓)</span>
+                {(result.chartType === '陰盤奇門' || result.chartType === '時家置閏') && (
+                  <>{'　'}<span className="inline-block bg-[#4395CA] text-white font-bold rounded-[3px] px-1">日</span> 日干落宮{'　'}<span className="inline-block bg-orange-500 text-white font-bold rounded-[3px] px-1">時</span> 時干落宮</>
+                )}
+              </p>
               <input type="text" value={remark} onChange={e => setRemark(e.target.value)} placeholder="可在此輸入儲存用的自訂盤局名稱..." className="w-full h-10 border border-gray-300 rounded-md px-3 bg-white focus:outline-none focus:border-[#4395CA] mb-4" />
 
               <div className="flex justify-center">

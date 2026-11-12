@@ -3,19 +3,9 @@
  */
 import React, { useRef, useEffect, useState } from 'react';
 import { exportPalace } from '../utils/exportMarkdown';
+import { showToast } from '../utils/toast';
+import { findStemPalace } from '../qimen';
 import { BehaviorFengShuiModal } from './BehaviorFengShuiModal';
-
-// 色彩配置：符合參考圖主要黑/灰，部分紅/綠
-const DOOR_CLR = {
-    '杜門': 'text-red-500 font-bold',
-    '景門': 'text-red-500 font-bold',
-    '休門': 'text-gray-800 font-bold',
-    '生門': 'text-green-600 font-bold', // Image showed green
-    '傷門': 'text-orange-600 font-bold', // Image showed orange
-    '開門': 'text-green-600 font-bold',
-    '死門': 'text-gray-500 font-bold',
-    '驚門': 'text-orange-600 font-bold',
-};
 
 // 輔助尋找空亡與驛馬落宮
 const DZ_PAL = {
@@ -28,20 +18,38 @@ function getKongWangPals(kwStr) {
     return Array.from(kwStr).map(c => DZ_PAL[c]).filter(Boolean);
 }
 
+// 與子奇門網站一致：刑、迫為紅色，墓為土黃色；刑墓同紅色並完整標示「刑墓」
 const getHarmColor = (harm, defaultCls = 'text-gray-900') => {
-    if (harm === '迫') return 'text-red-600';
-    if (harm === '刑') return 'text-purple-600'; // 紫色
-    if (harm === '墓') return 'text-[#B8860B]'; // 土黃色
-    if (harm === '刑墓') return 'text-blue-600'; // 藍色
+    if (harm === '迫' || harm === '刑' || harm === '刑墓') return 'text-red-600';
+    if (harm === '墓') return 'text-[#B8860B]';
     return defaultCls;
 };
 
-const getHarmText = (harm) => {
-    if (harm === '刑墓') return '刑';
-    return harm;
-};
+// 一組天干（含寄干）：兩字並排時縮小並上緣對齊，四害小字標在各自下方
+function StemGroup({ gan, harm, extra, extraHarm, labelPx, hangLabels }) {
+    const stemPx = extra ? 17 : 20;
+    const renderStem = (g, h) => (
+        <div className="relative flex flex-col items-center leading-none">
+            <span className={`font-bold ${getHarmColor(h)}`} style={{ fontSize: stemPx }}>{g}</span>
+            {h && (
+                <span
+                    className={`font-bold whitespace-nowrap ${getHarmColor(h)} ${hangLabels ? 'absolute top-full mt-[2px]' : 'mt-[2px]'}`}
+                    style={{ fontSize: labelPx }}
+                >{h}</span>
+            )}
+        </div>
+    );
+    return (
+        <div className="flex items-start gap-[1px]">
+            {renderStem(gan, harm)}
+            {extra && renderStem(extra, extraHarm)}
+        </div>
+    );
+}
 
-export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy, onPalaceClick, controlZoom = 1 }) {
+const MARK_CLR = { '日': 'bg-[#4395CA]', '時': 'bg-orange-500' };
+
+export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy, onPalaceClick, controlZoom = 1, labelPx = 12, marks = [] }) {
     const { num, name, sym, shen, star, door, tianGan, diGan, tianGanExtra, diGanExtra, extraStar, doorHarm, tianGanHarm, diGanHarm, tianGanExtraHarm, diGanExtraHarm, daXian, personnel12 } = palace;
     const isCenter = num === 5;
 
@@ -70,9 +78,9 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
             <div className="relative bg-white border border-gray-300 min-h-[160px] p-2 flex flex-col items-center justify-center">
                 <span className="absolute top-2 left-2 text-[15px] font-bold text-gray-700">5</span>
                 {daXian && (
-                    <div className="absolute left-2 top-1/2 -translate-y-1/2 flex flex-col items-center text-purple-800 text-[14px] font-serif tracking-tighter leading-tight mt-1">
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 flex flex-col items-center text-purple-800 text-[14px] font-serif tracking-tighter leading-tight">
                         <span>{daXian.start}</span>
-                        <span className="text-[14px] text-gray-400 rotate-90 leading-[0.5] py-2">~</span>
+                        <span className="text-[14px] text-gray-400 rotate-90 leading-[0.5] py-1">~</span>
                         <span>{daXian.end}</span>
                     </div>
                 )}
@@ -120,13 +128,20 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
             <div className="absolute top-2 left-2 flex flex-col items-start leading-none z-10">
                 <span className="font-bold text-[18px] text-gray-900 tracking-tighter">{sym}{num}</span>
                 <span className="text-[15px] font-bold text-gray-900 tracking-widest mt-1">{name}</span>
+                {marks.length > 0 && (
+                    <div className="flex flex-col gap-[3px] mt-1.5">
+                        {marks.map(m => (
+                            <span key={m} title={`${m}干落宮`} className={`${MARK_CLR[m]} text-white font-bold rounded-[3px] w-[18px] h-[18px] flex items-center justify-center`} style={{ fontSize: Math.max(12, labelPx) }}>{m}</span>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* 命盤專屬：大限區間 (顯示在宮內中左方) */}
             {daXian && (
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 flex flex-col items-center text-purple-800 text-[14px] font-serif tracking-tighter leading-tight mt-1 z-10">
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 flex flex-col items-center text-purple-800 text-[14px] font-serif tracking-tighter leading-tight z-10">
                     <span>{daXian.start}</span>
-                    <span className="text-[14px] text-gray-400 rotate-90 leading-[0.5] py-2">~</span>
+                    <span className="text-[14px] text-gray-400 rotate-90 leading-[0.5] py-1">~</span>
                     <span>{daXian.end}</span>
                 </div>
             )}
@@ -136,36 +151,14 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
                 {isMa && <span className="text-[#4395CA]">馬</span>}
                 {isKong && <span className="text-red-500">空◯</span>}
             </div>
-            {/* 右中配置：天盤天干 */}
-            <div className="absolute top-1/2 -translate-y-1/2 right-3 flex flex-col items-center">
-                <div className="flex items-baseline gap-0.5">
-                    <div className="flex flex-col items-center leading-none">
-                        <span className={`text-[20px] font-bold ${getHarmColor(tianGanHarm)}`}>{tianGan}</span>
-                        {tianGanHarm && <span className={`text-[12px] font-bold ${getHarmColor(tianGanHarm)} mt-[2px]`}>{getHarmText(tianGanHarm)}</span>}
-                    </div>
-                    {tianGanExtra && (
-                        <div className="flex flex-col items-center leading-none">
-                            <span className={`text-[20px] font-bold ${getHarmColor(tianGanExtraHarm)}`}>{tianGanExtra}</span>
-                            {tianGanExtraHarm && <span className={`text-[12px] font-bold ${getHarmColor(tianGanExtraHarm)} mt-[2px]`}>{getHarmText(tianGanExtraHarm)}</span>}
-                        </div>
-                    )}
-                </div>
+            {/* 右中配置：天盤天干（四害小字懸掛於下方，天干本身與九星同高） */}
+            <div className="absolute top-1/2 -translate-y-1/2 -mt-[6px] right-3">
+                <StemGroup gan={tianGan} harm={tianGanHarm} extra={tianGanExtra} extraHarm={tianGanExtraHarm} labelPx={labelPx} hangLabels />
             </div>
 
             {/* 右下配置：地盤天干 */}
-            <div className="absolute bottom-3 right-3 flex flex-col items-center">
-                <div className="flex items-baseline gap-0.5">
-                    <div className="flex flex-col items-center leading-none">
-                        <span className={`text-[20px] font-bold ${getHarmColor(diGanHarm)}`}>{diGan}</span>
-                        {diGanHarm && <span className={`text-[12px] font-bold ${getHarmColor(diGanHarm)} mt-[2px]`}>{getHarmText(diGanHarm)}</span>}
-                    </div>
-                    {diGanExtra && (
-                        <div className="flex flex-col items-center leading-none">
-                            <span className={`text-[20px] font-bold ${getHarmColor(diGanExtraHarm)}`}>{diGanExtra}</span>
-                            {diGanExtraHarm && <span className={`text-[12px] font-bold ${getHarmColor(diGanExtraHarm)} mt-[2px]`}>{getHarmText(diGanExtraHarm)}</span>}
-                        </div>
-                    )}
-                </div>
+            <div className="absolute bottom-3 right-3">
+                <StemGroup gan={diGan} harm={diGanHarm} extra={diGanExtra} extraHarm={diGanExtraHarm} labelPx={labelPx} />
             </div>
 
             {/* 中間主欄列 (神、星、門) */}
@@ -179,7 +172,8 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
 
                 <div className="flex flex-col items-center leading-none">
                     <span className={`text-[20px] tracking-widest ${getHarmColor(doorHarm, doorCls)}`}>{door}</span>
-                    {doorHarm && <span className={`text-[12px] font-bold ${getHarmColor(doorHarm)} mt-[2px]`}>{getHarmText(doorHarm)}</span>}
+                    {/* 無門迫時保留同高空行，讓各宮神、星、門的高度一致 */}
+                    <span className={`font-bold ${getHarmColor(doorHarm)} mt-[2px]${doorHarm ? '' : ' invisible'}`} style={{ fontSize: labelPx }} aria-hidden={!doorHarm}>{doorHarm || '迫'}</span>
                 </div>
             </div>
 
@@ -227,12 +221,26 @@ export function NineGrid({ result }) {
     const isMingPan = result.chartType === '命盤';
     const isShiJia = result.chartType === '時家置閏';
 
+    // 盤面在手機上會整體縮小；小字依縮放比例放大，確保實際顯示不小於約 10px / 11px
+    const labelPx = scale < 1 ? Math.max(12, Math.round(10 / scale)) : 12;
+    const yinGanPx = scale < 1 ? Math.max(14, Math.round(11 / scale)) : 14;
+
+    // 時盤標示日干、時干落宮（判讀時先定位「我」與「事」）
+    const marksByPalace = {};
+    if (result.chartType === '陰盤奇門' || isShiJia) {
+        const { siZhu } = result;
+        [['日', siZhu.dayGan, siZhu.dayZhi], ['時', siZhu.hourGan, siZhu.hourZhi]].forEach(([label, gan, zhi]) => {
+            const num = findStemPalace(result, gan, zhi);
+            if (num) (marksByPalace[num] ||= []).push(label);
+        });
+    }
+
     const getOuterYinGan = (palNum) => {
         if (isMingPan) return null;
         const p = result.palaces.find(x => x.num === palNum);
         if (!p || !p.yinGan) return null;
         return (
-            <div className="flex flex-col items-center justify-center text-[14px] text-gray-800 leading-tight font-medium">
+            <div className="flex flex-col items-center justify-center text-gray-800 leading-tight font-medium" style={{ fontSize: yinGanPx }}>
                 {Array.from(p.yinGan).map((char, i) => (
                     <span key={i}>{char}</span>
                 ))}
@@ -243,7 +251,7 @@ export function NineGrid({ result }) {
     return (
     <>
         <div ref={containerRef} className="w-full">
-            <div className="flex flex-col items-center mt-6 mb-6 mx-auto" style={{ width: '540px', zoom: scale }}>
+            <div className="flex flex-col items-center mt-2 mb-4 md:mt-6 md:mb-6 mx-auto" style={{ width: '540px', zoom: scale }}>
                 {/* 盤面上方 */}
                 {!isMingPan && (
                     <div className="flex items-center w-[540px] px-[42px] mb-1.5 text-[12px] text-gray-500 tracking-widest">
@@ -281,9 +289,13 @@ export function NineGrid({ result }) {
                                 isMingPan={isMingPan}
                                 // 縮小時放大複製鈕以利點擊，但上限 1.375 倍，避免蓋到左下角旁的八門
                                 controlZoom={scale < 1 ? Math.min(1 / scale, 1.375) : 1}
+                                labelPx={labelPx}
+                                marks={marksByPalace[p.num] || []}
                                 onCopy={() => {
                                     const md = exportPalace(result, p.num);
-                                    if(md) navigator.clipboard.writeText(md).then(() => alert(`已複製 ${p.name}宮 (\`${p.num}\`) 的 Markdown！`));
+                                    if (md) navigator.clipboard.writeText(md)
+                                        .then(() => showToast(`已複製 ${p.name}${p.num}宮 Markdown`))
+                                        .catch(() => showToast('複製失敗，請再試一次'));
                                 }}
                                 onPalaceClick={isShiJia ? (pal) => setSelectedPalace(pal) : undefined}
                             />
