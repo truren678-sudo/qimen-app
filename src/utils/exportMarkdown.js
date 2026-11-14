@@ -1,4 +1,5 @@
 // 負責將排盤結果轉換為 Markdown 字串的共用函數
+import { formatJieQiPoint } from '../qimen';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -246,8 +247,11 @@ export function exportFullChart(result) {
             md += `- **天干地支**：${siZhu.yearGan}${siZhu.yearZhi}年 ${siZhu.monthGan}${siZhu.monthZhi}月 ${siZhu.dayGan}${siZhu.dayZhi}日 ${siZhu.hourGan}${siZhu.hourZhi}時\n`;
         }
 
-        if (jieqiName && yuanName) {
-            md += `- **節氣**：${jieqiName} · ${yuanName}\n`;
+        if (result.jieqiSpan) {
+            md += `- **節氣**：${formatJieQiPoint(result.jieqiSpan.from)} ～ ${formatJieQiPoint(result.jieqiSpan.to)}\n`;
+        }
+        if (jieqiName && yuanName && chartType !== '陰盤奇門') {
+            md += `- **定局**：${jieqiName} · ${yuanName}\n`;
         }
 
         md += `- **旬首**：${xunShou}\n`;

@@ -14,3 +14,22 @@ describe('全盤 MD 匯出', () => {
     expect(md).toContain('- **農曆時間**：2025年閏6月6日 10時');
   });
 });
+
+describe('盤面圖片檔名', () => {
+  it('包含排盤系統與西元時間', async () => {
+    const { buildChartImageName } = await import('../src/utils/saveChartImage');
+    const r = calculateQimen(2026, 6, 26, 23, 25, { chartType: '陰盤奇門' });
+    expect(buildChartImageName(r)).toBe('奇門_陰盤奇門_2026-06-26_2325.png');
+  });
+
+  it('節氣顯示整段區間（對照 TZCHIMEN 2011/05/12 22:29）', () => {
+    const md = exportFullChart(calculateQimen(2011, 5, 12, 22, 29, { chartType: '陰盤奇門' }));
+    expect(md).toContain('- **節氣**：立夏 2011.05.06 04:23 ～ 小滿 2011.05.21 17:21\n');
+    expect(md).not.toContain('**定局**');
+  });
+
+  it('置閏盤另列定局節氣與元', () => {
+    const md = exportFullChart(calculateQimen(2011, 5, 12, 22, 29, { chartType: '時家置閏' }));
+    expect(md).toMatch(/- \*\*定局\*\*：.+ · [上中下]元\n/);
+  });
+});

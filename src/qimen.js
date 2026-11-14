@@ -451,6 +451,26 @@ function getActualJieQiName(solar) {
     return SIMPLIFIED_JIEQI[name] || name;
 }
 
+/** 目前所在節氣的完整區間：本節氣交節時刻 ～ 下一節氣交節時刻 */
+export function getJieQiSpan(solar) {
+    const lunar = solar.getLunar();
+    const toPoint = jq => {
+        const s = jq.getSolar();
+        const name = jq.getName();
+        return {
+            name: SIMPLIFIED_JIEQI[name] || name,
+            year: s.getYear(), month: s.getMonth(), day: s.getDay(), hour: s.getHour(), minute: s.getMinute(),
+        };
+    };
+    return { from: toPoint(lunar.getPrevJieQi(false)), to: toPoint(lunar.getNextJieQi(false)) };
+}
+
+/** 例：立夏 2011.05.06 04:23 */
+export function formatJieQiPoint(p) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${p.name} ${p.year}.${pad(p.month)}.${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)}`;
+}
+
 /** 奇門以晚子時（23:00 起）換日，日柱取隔天 */
 export function getQimenEightChar(solar) {
     const bazi = solar.getLunar().getEightChar();
@@ -649,6 +669,7 @@ export function calculateQimen(year, month, day, hour, minute, options = {}) {
         lunar: { year: chartSiZhu.lunarYear, month: chartSiZhu.lunarMonth, day: chartSiZhu.lunarDay, isLeap: chartSiZhu.isLeapMonth },
         siZhu: chartSiZhu,
         jieqiName: jieqiName,
+        jieqiSpan: getJieQiSpan(solar),
         yuanName: yuanName,
         juNum: juNum,
         isYin: isYin,
