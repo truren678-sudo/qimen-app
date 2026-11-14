@@ -57,7 +57,7 @@ export function BoardInfo({ result }) {
                     ))}
                     <div className="text-sm text-gray-700 tracking-widest self-center">天干：</div>
                     {[siZhu.yearGan, siZhu.monthGan, siZhu.dayGan, siZhu.hourGan].map((g, i) => (
-                        <div key={i} className="text-[15px] font-bold text-gray-800 text-center">{g}</div>
+                        <div key={i} className="text-[15px] font-bold text-[#4395CA] text-center">{g}</div>
                     ))}
                     <div className="text-sm text-gray-700 tracking-widest self-center">地支：</div>
                     {[siZhu.yearZhi, siZhu.monthZhi, siZhu.dayZhi, siZhu.hourZhi].map((z, i) => (
@@ -72,10 +72,10 @@ export function BoardInfo({ result }) {
                         <InfoItem label="排盤" value={chartType} />
 
                         <InfoItem label="旬首" value={xunShou} />
-                        <InfoItem label="空亡" value={kongWang} valueClass="text-gray-800" />
+                        <InfoItem label="空亡" value={kongWang} />
 
                         <InfoItem label="符頭" value={fuTou} />
-                        <InfoItem label="驛馬" value={yiMa} valueClass="text-gray-800" />
+                        <InfoItem label="驛馬" value={yiMa} />
 
                         <InfoItem label="值符" value={zhiFuXing} />
                         <InfoItem label="值使" value={zhiShiMen} />
