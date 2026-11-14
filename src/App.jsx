@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { BoardInfo } from './components/BoardInfo';
 import { NineGrid } from './components/NineGrid';
 import { showToast } from './utils/toast';
 import { QimenCalendarView } from './components/QimenCalendarView';
 import { SymbolKnowledgeModal } from './components/BehaviorFengShuiModal';
+import { ChartNotesModal } from './components/ChartNotesModal';
+import { buildNoteKey, getNote } from './utils/chartNotes';
 import { calculateQimen } from './qimen';
 import { exportFullChart } from './utils/exportMarkdown';
+import { buildChartImageName, saveChartImage } from './utils/saveChartImage';
 import { addCivilMinutes, isValidCivilTime, isValidGregorianDate } from './utils/civilDateTime';
 
 function isValidSavedRecord(record) {
@@ -43,7 +46,35 @@ function App() {
   const [loadedInputSettings, setLoadedInputSettings] = useState(null);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const chartCaptureRef = useRef(null);
+  const [savingImage, setSavingImage] = useState(false);
+
+  const handleSaveImage = async () => {
+    if (!result || !chartCaptureRef.current || savingImage) return;
+    setSavingImage(true);
+    try {
+      const outcome = await saveChartImage(chartCaptureRef.current, buildChartImageName(result));
+      if (outcome === 'downloaded') showToast('已下載盤面圖片');
+      else if (outcome === 'shared') showToast('已開啟分享，可選擇儲存影像');
+    } catch {
+      showToast('圖片產生失敗，請再試一次');
+    } finally {
+      setSavingImage(false);
+    }
+  };
   const [showSymbolModal, setShowSymbolModal] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [hasNote, setHasNote] = useState(false);
+
+  // 切換盤局時，檢查此盤是否已有筆記（按鈕上顯示小圓點）
+  const noteKey = result ? buildNoteKey(result) : null;
+  useEffect(() => {
+    let cancelled = false;
+    if (!noteKey) { setHasNote(false); return undefined; }
+    getNote(noteKey).then(n => { if (!cancelled) setHasNote(Boolean(n)); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [noteKey]);
+  const handleNoteSaved = useCallback(exists => setHasNote(exists), []);
 
   const [remark, setRemark] = useState('');
   const [savedRecords, setSavedRecords] = useState(() => {
@@ -208,8 +239,8 @@ function App() {
     <main className="flex-1 flex flex-col p-3 md:p-4 overflow-auto min-w-0 w-full">
       <div className="w-full bg-white border border-gray-300 mb-4 p-2 shadow-sm rounded-sm shrink-0">
         <div className="flex justify-between items-center px-2">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-bold text-gray-700 tracking-wider">排盤結果</h2>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+            <h2 className="text-sm font-bold text-gray-700 tracking-wider whitespace-nowrap mr-1">排盤結果</h2>
             {result && (
               <>
               <button
@@ -219,14 +250,30 @@ function App() {
                     .then(() => showToast('已複製全盤 Markdown'))
                     .catch(() => showToast('複製失敗，請再試一次'));
                 }}
-                className="text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer"
+                className="whitespace-nowrap text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer"
                 title="複製為 Markdown 格式以提供給 AI"
               >
                 📋 全盤 MD
               </button>
               <button
+                onClick={handleSaveImage}
+                disabled={savingImage}
+                className="whitespace-nowrap text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                title="將盤面儲存為 PNG 圖片"
+              >
+                {savingImage ? '⏳ 產生中…' : '🖼️ 存圖'}
+              </button>
+              <button
+                onClick={() => setShowNotes(true)}
+                className="relative whitespace-nowrap text-xs bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-700 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer"
+                title={hasNote ? '此盤已有筆記' : '為此盤寫筆記'}
+              >
+                📝 筆記
+                {hasNote && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border border-white" aria-label="已有筆記" />}
+              </button>
+              <button
                 onClick={() => setShowSymbolModal(true)}
-                className="text-xs bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-600 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer"
+                className="whitespace-nowrap text-xs bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-600 px-2 py-0.5 rounded shadow-sm transition-colors cursor-pointer"
                 title="查看神星門干符號象徵速查"
               >
                 📖 符號象徵
@@ -234,7 +281,7 @@ function App() {
               </>
             )}
           </div>
-          <span className="text-[10px] text-gray-400">{result?.chartType || '時家奇門遁甲'}</span>
+          <span className="hidden sm:inline text-[10px] text-gray-400 whitespace-nowrap ml-2">{result?.chartType || '時家奇門遁甲'}</span>
         </div>
       </div>
 
@@ -245,15 +292,17 @@ function App() {
       )}
 
       <div className="flex flex-col mx-auto w-full bg-[#f2f4f7] p-3 md:p-6 border border-gray-200 shadow-sm rounded-md relative shrink-0">
-        {/* 盤局資訊區 */}
-        <BoardInfo result={result} />
+        {/* 盤局資訊區＋九宮格（「存圖」擷取此範圍） */}
+        <div ref={chartCaptureRef} className="bg-[#f2f4f7] pt-2">
+          <BoardInfo result={result} />
 
-        {/* 九宮格 */}
-        {result && (
-          <div className="mt-0 md:mt-4 w-full flex justify-center px-1 md:px-0 py-0 md:py-2">
-            <NineGrid result={result} />
-          </div>
-        )}
+          {/* 九宮格 */}
+          {result && (
+            <div className="w-full flex justify-center px-1 md:px-0">
+              <NineGrid result={result} />
+            </div>
+          )}
+        </div>
 
         {/* 底部按鈕 */}
         {result && (
@@ -272,7 +321,7 @@ function App() {
 
             <div className="w-full">
               <h3 className="text-xs font-bold text-gray-700 mb-2 tracking-wider">盤局備註說明：</h3>
-              <p className="text-xs text-gray-600 mb-2">奇門四害: <span className="text-[#B8860B] font-bold">入墓(墓)</span>、<span className="text-red-600 font-bold">擊刑(刑)</span>、<span className="text-red-600 font-bold">門迫(迫)</span>、<span className="text-red-600 font-bold">擊刑+入墓(刑墓)</span>
+              <p className="text-xs text-gray-600 mb-2">奇門四害: <span className="text-[#C0661A] font-bold">入墓(墓)</span>、<span className="text-[#9B3DC4] font-bold">擊刑(刑)</span>、<span className="text-red-600 font-bold">門迫(迫)</span>、<span className="text-[#1E88D6] font-bold">刑+墓(刑)</span>
                 {(result.chartType === '陰盤奇門' || result.chartType === '時家置閏') && (
                   <>{'　'}<span className="inline-block bg-[#4395CA] text-white font-bold rounded-[3px] px-1">日</span> 日干落宮{'　'}<span className="inline-block bg-orange-500 text-white font-bold rounded-[3px] px-1">時</span> 時干落宮</>
                 )}
@@ -384,6 +433,11 @@ function App() {
     {/* 符號象徵知識小卡 Modal */}
     {showSymbolModal && (
       <SymbolKnowledgeModal onClose={() => setShowSymbolModal(false)} />
+    )}
+
+    {/* 盤局筆記 Modal */}
+    {showNotes && result && (
+      <ChartNotesModal result={result} onClose={() => setShowNotes(false)} onSaved={handleNoteSaved} />
     )}
   </>
   );

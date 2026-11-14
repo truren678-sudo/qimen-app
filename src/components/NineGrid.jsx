@@ -20,8 +20,10 @@ function getKongWangPals(kwStr) {
 
 // 與子奇門網站一致：刑、迫為紅色，墓為土黃色；刑墓同紅色並完整標示「刑墓」
 const getHarmColor = (harm, defaultCls = 'text-gray-900') => {
-    if (harm === '迫' || harm === '刑' || harm === '刑墓') return 'text-red-600';
-    if (harm === '墓') return 'text-[#B8860B]';
+    if (harm === '墓') return 'text-[#C0661A]';
+    if (harm === '刑') return 'text-[#9B3DC4]';
+    if (harm === '迫') return 'text-red-600';
+    if (harm === '刑墓') return 'text-[#1E88D6]';
     return defaultCls;
 };
 
@@ -35,7 +37,7 @@ function StemGroup({ gan, harm, extra, extraHarm, labelPx, hangLabels }) {
                 <span
                     className={`font-bold whitespace-nowrap ${getHarmColor(h)} ${hangLabels ? 'absolute top-full mt-[2px]' : 'mt-[2px]'}`}
                     style={{ fontSize: labelPx }}
-                >{h}</span>
+                >{h === '刑墓' ? '刑' : h}</span>
             )}
         </div>
     );
@@ -85,11 +87,10 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
                     </div>
                 )}
                 {isMingPan && <span className="text-[24px] font-bold text-transparent bg-clip-text bg-gradient-to-b from-purple-800 to-indigo-800 opacity-60 font-serif">大 限</span>}
-                <span className="absolute bottom-2 right-2 text-[11px] text-gray-400">天禽(寄坤二)</span>
 
                 {/* 單宮拷貝按鈕 */}
                 {onCopy && (
-                    <button type="button" onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 left-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
+                    <button type="button" data-no-capture onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 left-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
                         📋
                     </button>
                 )}
@@ -181,7 +182,7 @@ export function PalaceCell({ palace, isKong, isMa, isDayQimen, isMingPan, onCopy
 
             {/* 單宮拷貝按鈕 */}
             {onCopy && (
-                <button type="button" onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 left-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity z-20" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
+                <button type="button" data-no-capture onClick={(event) => { event.stopPropagation(); onCopy(); }} style={{ zoom: controlZoom }} className="absolute bottom-1 left-1 text-[14px] text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 border border-gray-300 rounded min-w-[32px] min-h-[32px] flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity z-20" title="複製此宮位 MD" aria-label={`複製${name}${num}宮 Markdown`}>
                     📋
                 </button>
             )}
@@ -240,7 +241,7 @@ export function NineGrid({ result }) {
         const p = result.palaces.find(x => x.num === palNum);
         if (!p || !p.yinGan) return null;
         return (
-            <div className="flex flex-col items-center justify-center text-gray-800 leading-tight font-medium" style={{ fontSize: yinGanPx }}>
+            <div className={`flex ${palNum === 9 || palNum === 1 ? 'flex-row gap-[2px]' : 'flex-col'} items-center justify-center text-gray-800 leading-tight font-medium`} style={{ fontSize: yinGanPx }}>
                 {Array.from(p.yinGan).map((char, i) => (
                     <span key={i}>{char}</span>
                 ))}
@@ -251,7 +252,7 @@ export function NineGrid({ result }) {
     return (
     <>
         <div ref={containerRef} className="w-full">
-            <div className="flex flex-col items-center mt-2 mb-4 md:mt-6 md:mb-6 mx-auto" style={{ width: '540px', zoom: scale }}>
+            <div data-capture-bounds className="flex flex-col items-center mt-1 mb-4 md:mb-6 mx-auto" style={{ width: '540px', zoom: scale }}>
                 {/* 盤面上方 */}
                 {!isMingPan && (
                     <div className="flex items-center w-[540px] px-[42px] mb-1.5 text-[12px] text-gray-500 tracking-widest">

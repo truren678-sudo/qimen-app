@@ -1,3 +1,5 @@
+import { formatJieQiPoint } from '../qimen';
+
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
 function InfoItem({ label, value, valueClass = "text-[#4395CA]" }) {
@@ -13,18 +15,19 @@ export function BoardInfo({ result }) {
     if (!result) return null;
 
     const { solar, lunar, siZhu,
-        jieqiName, yuanName, juNum, yinYang,
+        jieqiName, jieqiSpan, yuanName, juNum, yinYang,
         xunShou, kongWang, yiMa, fuTou, zhiFuXing, zhiShiMen, chartType, gender, fuYinFanYin } = result;
 
     const isMingPan = chartType === '命盤';
+    const isYinPan = chartType === '陰盤奇門';
 
     const pad = n => String(n).padStart(2, '0');
     const solarStr = `${solar.year} 年 ${pad(solar.month)} 月 ${pad(solar.day)} 日 ${pad(solar.hour)} 時 ${pad(solar.minute)} 分 (${WEEK[solar.weekDay]})`;
     const lunarStr = `${lunar.year} 年 ${lunar.isLeap ? '閏' : ''}${pad(lunar.month)} 月 ${pad(lunar.day)} 日 ${pad(solar.hour)} 時`;
 
     return (
-        <div className="w-full flex justify-center mb-4">
-            <div className="w-fit flex flex-col items-center">
+        <div className="w-full flex justify-center mb-1">
+            <div data-capture-bounds className="w-fit flex flex-col items-center">
                 {/* 日期資訊 */}
                 <div className="w-full space-y-1 mb-4 flex flex-col items-center">
                     <div className="flex items-baseline gap-2">
@@ -35,6 +38,15 @@ export function BoardInfo({ result }) {
                         <span className="text-sm font-medium text-gray-700 tracking-widest">農曆：</span>
                         <span className="text-sm text-gray-600 tracking-wider">{lunarStr}</span>
                     </div>
+                    {jieqiSpan && (
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-sm font-medium text-gray-700 tracking-widest shrink-0">節氣：</span>
+                            <span className="text-sm text-orange-600 font-medium tracking-wide flex flex-wrap gap-x-1.5">
+                                <span className="whitespace-nowrap">{formatJieQiPoint(jieqiSpan.from)}</span>
+                                <span className="whitespace-nowrap">～ {formatJieQiPoint(jieqiSpan.to)}</span>
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* 四柱 */}
@@ -54,7 +66,7 @@ export function BoardInfo({ result }) {
                 </div>
 
                 {/* 局盤資訊 */}
-                <div className="w-full overflow-x-auto mb-4">
+                <div className="w-full overflow-x-auto mb-2">
                     <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-left w-fit mx-auto" style={{ minWidth: 'max-content' }}>
                         <InfoItem label="起局" value={`${yinYang}${juNum} 局`} />
                         <InfoItem label="排盤" value={chartType} />
@@ -68,11 +80,13 @@ export function BoardInfo({ result }) {
                         <InfoItem label="值符" value={zhiFuXing} />
                         <InfoItem label="值使" value={zhiShiMen} />
 
-                        <div className="col-span-2 flex items-center gap-6 flex-wrap">
-                            <InfoItem label="節氣" value={`${jieqiName} · ${yuanName}`} valueClass="text-orange-600" />
-                            {isMingPan && <span className="text-red-600 font-bold tracking-widest">{gender}命</span>}
-                            {fuYinFanYin && <span className="text-red-600 font-bold tracking-widest">{fuYinFanYin}</span>}
-                        </div>
+                        {(!isYinPan || isMingPan || fuYinFanYin) && (
+                            <div className="col-span-2 flex items-center gap-6 flex-wrap">
+                                {!isYinPan && <InfoItem label="定局" value={`${jieqiName} · ${yuanName}`} valueClass="text-orange-600" />}
+                                {isMingPan && <span className="text-red-600 font-bold tracking-widest">{gender}命</span>}
+                                {fuYinFanYin && <span className="text-red-600 font-bold tracking-widest">{fuYinFanYin}</span>}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
