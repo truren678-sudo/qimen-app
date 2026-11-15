@@ -41,7 +41,7 @@ export function BoardInfo({ result }) {
                     {jieqiSpan && (
                         <div className="flex items-baseline gap-2">
                             <span className="text-sm font-medium text-gray-700 tracking-widest shrink-0">節氣：</span>
-                            <span className="text-sm text-orange-600 font-medium tracking-wide flex flex-wrap gap-x-1.5">
+                            <span className="text-sm text-gray-800 font-medium tracking-wide flex flex-wrap gap-x-1.5">
                                 <span className="whitespace-nowrap">{formatJieQiPoint(jieqiSpan.from)}</span>
                                 <span className="whitespace-nowrap">～ {formatJieQiPoint(jieqiSpan.to)}</span>
                             </span>
@@ -82,7 +82,7 @@ export function BoardInfo({ result }) {
 
                         {(!isYinPan || isMingPan || fuYinFanYin) && (
                             <div className="col-span-2 flex items-center gap-6 flex-wrap">
-                                {!isYinPan && <InfoItem label="定局" value={`${jieqiName} · ${yuanName}`} valueClass="text-orange-600" />}
+                                {!isYinPan && <InfoItem label="定局" value={`${jieqiName} · ${yuanName}`} />}
                                 {isMingPan && <span className="text-red-600 font-bold tracking-widest">{gender}命</span>}
                                 {fuYinFanYin && <span className="text-red-600 font-bold tracking-widest">{fuYinFanYin}</span>}
                             </div>
