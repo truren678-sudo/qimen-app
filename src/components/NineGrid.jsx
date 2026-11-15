@@ -252,7 +252,7 @@ export function NineGrid({ result }) {
     return (
     <>
         <div ref={containerRef} className="w-full">
-            <div data-capture-bounds className="flex flex-col items-center mt-1 mb-4 md:mb-6 mx-auto" style={{ width: '540px', zoom: scale }}>
+            <div data-capture-bounds className={`flex flex-col items-center ${isMingPan ? 'mt-10 mb-10' : 'mt-1 mb-4 md:mb-6'} mx-auto`} style={{ width: '540px', zoom: scale }}>
                 {/* 盤面上方 */}
                 {!isMingPan && (
                     <div className="flex items-center w-[540px] px-[42px] mb-1.5 text-[12px] text-gray-500 tracking-widest">
